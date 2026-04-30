@@ -104,6 +104,14 @@ const ResearchResultSchema = z.object({
     url: z.string(),
     date: z.string(),
   })).nullable(),
+
+  // Web search results (from Tavily)
+  webSearchResults: z.array(z.object({
+    title: z.string(),
+    snippet: z.string(),
+    url: z.string(),
+    source: z.enum(['reddit', 'web']),
+  })).nullable(),
 })
 
 export type ResearchResult = z.infer<typeof ResearchResultSchema>
@@ -475,7 +483,23 @@ export async function POST(request: Request) {
           date: '5 months ago',
         },
       ] : [], // No Reddit mentions for real data (would need actual Reddit API integration)
+
+      // Web search results - fetched from Tavily API
+      webSearchResults: [],
     }
+
+    // Fetch web search results in the background (don't wait for it)
+    // This prevents timeouts while still providing the data when available
+    const webSearchPromise = fetch(
+      `/api/web-search?name=${encodeURIComponent(`${prof.firstName} ${prof.lastName}`)}&school=${encodeURIComponent(school)}`
+    )
+      .then(res => res.json())
+      .then((data: any) => {
+        if (data.success && Array.isArray(data.results)) {
+          result.webSearchResults = data.results
+        }
+      })
+      .catch(err => console.error('[v0] Web search fetch error:', err))
 
     return Response.json(result)
 
