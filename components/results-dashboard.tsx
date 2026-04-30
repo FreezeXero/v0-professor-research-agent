@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { SourceBadge } from '@/components/source-badge'
-import type { ResearchResult } from '@/app/api/research/route'
+import type { ResearchResult, Review } from '@/app/api/research/route'
 import {
   AlertTriangle,
   ArrowUp,
@@ -20,9 +20,11 @@ import {
   Sparkles,
   TrendingDown,
   TrendingUp,
-  Minus as TrendStable,
   XCircle,
   Users,
+  Star,
+  ThumbsUp,
+  Calendar,
 } from 'lucide-react'
 
 interface ResultsDashboardProps {
@@ -58,8 +60,89 @@ function GradeBar({ grade, percentage, color }: { grade: string; percentage: num
   )
 }
 
+// Single review card component
+function ReviewCard({ review }: { review: Review }) {
+  const color = getScoreColor(review.rating)
+  const dateStr = review.date ? new Date(review.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }) : null
+  
+  return (
+    <div className="p-4 bg-surface-2/50 border border-border/20 rounded-xl flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Rating */}
+          <span className={cn(
+            'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold tabular-nums',
+            color === 'green' && 'bg-score-green/20 text-score-green',
+            color === 'yellow' && 'bg-score-yellow/20 text-score-yellow',
+            color === 'red' && 'bg-score-red/20 text-score-red',
+            color === 'neutral' && 'bg-muted text-muted-foreground',
+          )}>
+            <Star size={10} className="fill-current" />
+            {review.rating.toFixed(1)}
+          </span>
+          
+          {/* Class */}
+          {review.class && (
+            <span className="text-xs text-muted-foreground font-mono bg-surface-1 px-2 py-1 rounded">
+              {review.class}
+            </span>
+          )}
+          
+          {/* Grade */}
+          {review.grade && review.grade !== 'N/A' && review.grade !== 'Not sure yet' && (
+            <span className="text-xs text-muted-foreground/70">
+              Grade: {review.grade}
+            </span>
+          )}
+        </div>
+        
+        {/* Date */}
+        {dateStr && (
+          <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1 shrink-0">
+            <Calendar size={10} />
+            {dateStr}
+          </span>
+        )}
+      </div>
+      
+      {/* Comment */}
+      {review.comment && (
+        <p className="text-sm text-white/80 leading-relaxed">
+          {review.comment}
+        </p>
+      )}
+      
+      {/* Tags and metadata */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {review.wouldTakeAgain !== null && (
+          <span className={cn(
+            'text-[10px] font-medium',
+            review.wouldTakeAgain ? 'text-score-green' : 'text-score-red'
+          )}>
+            {review.wouldTakeAgain ? 'Would take again' : "Wouldn't take again"}
+          </span>
+        )}
+        
+        {review.thumbsUp > 0 && (
+          <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+            <ThumbsUp size={10} />
+            {review.thumbsUp}
+          </span>
+        )}
+        
+        {review.tags.slice(0, 3).map((tag, i) => (
+          <span key={i} className="text-[10px] text-muted-foreground/50 bg-surface-1 px-1.5 py-0.5 rounded">
+            {tag}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps) {
   const [copied, setCopied] = useState(false)
+  const [showAllReviews, setShowAllReviews] = useState(false)
 
   const handleShare = useCallback(async () => {
     const url = `${window.location.origin}?u=${encodeURIComponent(searchQuery.university)}&p=${encodeURIComponent(searchQuery.professor)}&c=${encodeURIComponent(searchQuery.classQuery)}`
@@ -79,7 +162,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
           <h3 className="text-lg font-semibold text-white mb-2">Professor Not Found</h3>
           <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
             {result.notFoundReason ||
-              `We couldn't find ${searchQuery.professor} at ${searchQuery.university} in our research data.`}
+              `We couldn't find ${searchQuery.professor} at ${searchQuery.university} in Rate My Professors.`}
           </p>
         </div>
         
@@ -101,7 +184,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
         </a>
         
         <p className="text-xs text-muted-foreground/50 max-w-xs">
-          Help other students by leaving the first review on Rate My Professor or Reddit.
+          Help other students by leaving the first review on Rate My Professor.
         </p>
       </div>
     )
@@ -115,6 +198,15 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
     result.classSpecificRating !== null
       ? result.classSpecificRating - result.overallRating
       : null
+
+  // Determine which reviews to show
+  const reviewsToShow = result.hasClassSpecificData && result.classSpecificReviews 
+    ? result.classSpecificReviews 
+    : result.reviews
+  
+  const displayedReviews = showAllReviews 
+    ? reviewsToShow 
+    : reviewsToShow?.slice(0, 3)
 
   return (
     <div className="flex flex-col gap-6">
@@ -148,36 +240,53 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h2 className="text-xl font-semibold text-white tracking-tight">
-              {searchQuery.professor}
+              {result.professorFirstName} {result.professorLastName}
             </h2>
             <ChevronRight size={14} className="text-muted-foreground/50" />
             <span className="text-sm text-muted-foreground/70">{searchQuery.university}</span>
           </div>
-          {result.courseCode && (
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            {result.department && (
+              <span className="text-xs text-muted-foreground/60">{result.department}</span>
+            )}
+            {result.courseCode && (
               <span className="inline-flex items-center gap-1.5 text-xs text-white bg-white/10 border border-white/10 px-2.5 py-1 rounded-full font-mono font-medium">
                 <BookOpen size={11} />
                 {result.courseCode}
               </span>
-              {result.courseFullName && (
-                <span className="text-xs text-muted-foreground/60">{result.courseFullName}</span>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
         
-        {/* Share button */}
-        <button
-          onClick={handleShare}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg',
-            'bg-surface-2 border border-border/40 text-sm text-muted-foreground',
-            'hover:text-white hover:border-white/20 transition-all duration-200',
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          {result.rmpUrl && (
+            <a
+              href={result.rmpUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg',
+                'bg-surface-2 border border-border/40 text-sm text-muted-foreground',
+                'hover:text-white hover:border-white/20 transition-all duration-200',
+              )}
+            >
+              <ExternalLink size={14} />
+              RMP
+            </a>
           )}
-        >
-          {copied ? <Check size={14} /> : <Copy size={14} />}
-          {copied ? 'Copied!' : 'Share'}
-        </button>
+          <button
+            onClick={handleShare}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg',
+              'bg-surface-2 border border-border/40 text-sm text-muted-foreground',
+              'hover:text-white hover:border-white/20 transition-all duration-200',
+            )}
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? 'Copied!' : 'Share'}
+          </button>
+        </div>
       </div>
 
       {/* Source badges */}
@@ -197,27 +306,33 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
 
       {/* Big stats row: Rating, Would Take Again, Difficulty */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Class-specific Rating */}
+        {/* Class-specific or Overall Rating */}
         <div className={cn(
           'flex flex-col items-center justify-center p-5 rounded-2xl border text-center',
           'bg-surface-1 border-border/40',
         )}>
           <span className="text-xs text-muted-foreground/60 uppercase tracking-wider mb-2">
-            {result.courseCode || 'Class'} Rating
+            {result.hasClassSpecificData ? `${result.courseCode} Rating` : 'Overall Rating'}
           </span>
           <span className={cn(
             'text-5xl font-bold tabular-nums leading-none',
             {
-              'text-score-green': classColor === 'green',
-              'text-score-yellow': classColor === 'yellow',
-              'text-score-red': classColor === 'red',
-              'text-muted-foreground': classColor === 'neutral',
+              'text-score-green': (result.hasClassSpecificData ? classColor : overallColor) === 'green',
+              'text-score-yellow': (result.hasClassSpecificData ? classColor : overallColor) === 'yellow',
+              'text-score-red': (result.hasClassSpecificData ? classColor : overallColor) === 'red',
+              'text-muted-foreground': (result.hasClassSpecificData ? classColor : overallColor) === 'neutral',
             }
           )}>
-            {result.classSpecificRating?.toFixed(1) ?? '—'}
+            {result.hasClassSpecificData 
+              ? (result.classSpecificRating?.toFixed(1) ?? '—')
+              : (result.overallRating?.toFixed(1) ?? '—')
+            }
           </span>
           <span className="text-xs text-muted-foreground/50 mt-1">
-            from {result.classSpecificRatingCount?.toLocaleString() ?? 0} reviews
+            from {result.hasClassSpecificData 
+              ? result.classSpecificRatingCount?.toLocaleString() 
+              : result.overallRatingCount?.toLocaleString()
+            } reviews
           </span>
         </div>
 
@@ -262,63 +377,65 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
       </div>
 
       {/* Rating comparison: Overall vs Class-specific */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Overall rating */}
-        <div className="flex flex-col gap-2 p-4 bg-surface-1 border border-border/30 rounded-xl">
-          <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">
-            Overall Rating
-          </span>
-          <div className="flex items-baseline gap-2">
-            <span
-              className={cn('text-3xl font-bold tabular-nums', {
-                'text-score-green': overallColor === 'green',
-                'text-score-yellow': overallColor === 'yellow',
-                'text-score-red': overallColor === 'red',
-                'text-muted-foreground': overallColor === 'neutral',
-              })}
-            >
-              {result.overallRating?.toFixed(1) ?? '—'}
-            </span>
-            <span className="text-xs text-muted-foreground/50">
-              / 5 from {result.overallRatingCount?.toLocaleString()} reviews
-            </span>
-          </div>
-        </div>
-
-        {/* Rating trend */}
-        {result.reviewTrend && (
-          <div className={cn(
-            'flex flex-col gap-2 p-4 rounded-xl border',
-            result.reviewTrend.direction === 'up' && 'bg-score-green-bg/50 border-score-green/20',
-            result.reviewTrend.direction === 'down' && 'bg-score-red-bg/50 border-score-red/20',
-            result.reviewTrend.direction === 'stable' && 'bg-surface-1 border-border/30',
-          )}>
+      {result.hasClassSpecificData && (
+        <div className="grid grid-cols-2 gap-4">
+          {/* Overall rating */}
+          <div className="flex flex-col gap-2 p-4 bg-surface-1 border border-border/30 rounded-xl">
             <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">
-              Review Trend
+              Overall Rating
             </span>
-            <div className="flex items-center gap-2">
-              {result.reviewTrend.direction === 'up' && (
-                <>
-                  <ArrowUp size={20} className="text-score-green" />
-                  <span className="text-sm text-score-green font-medium">Improving</span>
-                </>
-              )}
-              {result.reviewTrend.direction === 'down' && (
-                <>
-                  <ArrowDown size={20} className="text-score-red" />
-                  <span className="text-sm text-score-red font-medium">Declining</span>
-                </>
-              )}
-              {result.reviewTrend.direction === 'stable' && (
-                <>
-                  <Minus size={20} className="text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground font-medium">Stable</span>
-                </>
-              )}
+            <div className="flex items-baseline gap-2">
+              <span
+                className={cn('text-3xl font-bold tabular-nums', {
+                  'text-score-green': overallColor === 'green',
+                  'text-score-yellow': overallColor === 'yellow',
+                  'text-score-red': overallColor === 'red',
+                  'text-muted-foreground': overallColor === 'neutral',
+                })}
+              >
+                {result.overallRating?.toFixed(1) ?? '—'}
+              </span>
+              <span className="text-xs text-muted-foreground/50">
+                / 5 from {result.overallRatingCount?.toLocaleString()} reviews
+              </span>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Rating trend */}
+          {result.reviewTrend && (
+            <div className={cn(
+              'flex flex-col gap-2 p-4 rounded-xl border',
+              result.reviewTrend.direction === 'up' && 'bg-score-green-bg/50 border-score-green/20',
+              result.reviewTrend.direction === 'down' && 'bg-score-red-bg/50 border-score-red/20',
+              result.reviewTrend.direction === 'stable' && 'bg-surface-1 border-border/30',
+            )}>
+              <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">
+                Review Trend
+              </span>
+              <div className="flex items-center gap-2">
+                {result.reviewTrend.direction === 'up' && (
+                  <>
+                    <ArrowUp size={20} className="text-score-green" />
+                    <span className="text-sm text-score-green font-medium">Improving</span>
+                  </>
+                )}
+                {result.reviewTrend.direction === 'down' && (
+                  <>
+                    <ArrowDown size={20} className="text-score-red" />
+                    <span className="text-sm text-score-red font-medium">Declining</span>
+                  </>
+                )}
+                {result.reviewTrend.direction === 'stable' && (
+                  <>
+                    <Minus size={20} className="text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground font-medium">Stable</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Rating gap insight */}
       {ratingDiff !== null && Math.abs(ratingDiff) >= 0.2 && (
@@ -343,6 +460,31 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
         </div>
       )}
 
+      {/* Available courses from this professor */}
+      {result.availableCourses && result.availableCourses.length > 0 && !result.hasClassSpecificData && searchQuery.classQuery && (
+        <div className="p-4 bg-surface-1 border border-border/30 rounded-xl">
+          <div className="flex items-center gap-2 mb-3">
+            <BookOpen size={14} className="text-muted-foreground/60" />
+            <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
+              Classes with reviews for this professor
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {result.availableCourses.slice(0, 10).map((course, i) => (
+              <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 border border-border/20 rounded-full text-xs font-mono text-white/80">
+                {course.courseName}
+                <span className="text-muted-foreground/50">({course.courseCount})</span>
+              </span>
+            ))}
+            {result.availableCourses.length > 10 && (
+              <span className="text-xs text-muted-foreground/50 self-center">
+                +{result.availableCourses.length - 10} more
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Grade Distribution */}
       {result.gradeDistribution && (
         <div className="p-5 bg-surface-1 border border-border/30 rounded-xl">
@@ -350,6 +492,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
             <span className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">
               Grade Distribution
             </span>
+            <span className="text-[10px] text-muted-foreground/40">(from student reports)</span>
           </div>
           <div className="flex flex-col gap-2.5">
             <GradeBar grade="A" percentage={result.gradeDistribution.A} color="bg-score-green" />
@@ -367,7 +510,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
           <div className="flex items-center gap-2">
             <Sparkles size={14} className="text-white" />
             <span className="text-xs font-medium text-white/70 uppercase tracking-wider">
-              AI Summary
+              Summary
             </span>
           </div>
           <p className="text-sm text-white/80 leading-relaxed">{result.aiSummary}</p>
@@ -397,8 +540,37 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
         </div>
       )}
 
+      {/* Real Reviews Section */}
+      {reviewsToShow && reviewsToShow.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
+              {result.hasClassSpecificData ? `Reviews for ${result.courseCode}` : 'Student Reviews'}
+            </span>
+            <span className="text-xs text-muted-foreground/40">
+              {reviewsToShow.length} review{reviewsToShow.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          
+          <div className="flex flex-col gap-3">
+            {displayedReviews?.map((review, i) => (
+              <ReviewCard key={i} review={review} />
+            ))}
+          </div>
+          
+          {reviewsToShow.length > 3 && (
+            <button
+              onClick={() => setShowAllReviews(!showAllReviews)}
+              className="text-sm text-muted-foreground hover:text-white transition-colors self-center py-2"
+            >
+              {showAllReviews ? 'Show less' : `Show all ${reviewsToShow.length} reviews`}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Pros & Cons */}
-      {(result.pros?.length || result.cons?.length) && (
+      {(result.pros?.length || result.cons?.length) ? (
         <div className="grid grid-cols-2 gap-4">
           {result.pros && result.pros.length > 0 && (
             <div className="p-4 bg-surface-1 border border-border/30 rounded-xl flex flex-col gap-3">
@@ -437,7 +609,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {/* Tags */}
       {result.tags && result.tags.length > 0 && (
@@ -459,29 +631,33 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
       )}
 
       {/* No class-specific data warning + First to Rate CTA */}
-      {!result.hasClassSpecificData && (
+      {!result.hasClassSpecificData && searchQuery.classQuery && (
         <div className="flex flex-col items-center gap-4 p-6 rounded-xl border border-score-yellow/20 bg-score-yellow-bg/50 text-center">
           <AlertTriangle size={24} className="text-score-yellow" />
           <div>
-            <p className="text-sm font-medium text-score-yellow mb-1">No class-specific reviews yet</p>
+            <p className="text-sm font-medium text-score-yellow mb-1">
+              No reviews found for &ldquo;{searchQuery.classQuery}&rdquo;
+            </p>
             <p className="text-xs text-score-yellow/70 max-w-sm">
-              The rating above is estimated from overall data. Help future students!
+              The data shown is from the professor&apos;s overall ratings. Be the first to review this specific class!
             </p>
           </div>
-          <a
-            href="https://www.ratemyprofessors.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              'flex items-center gap-2 px-5 py-2.5 rounded-lg',
-              'bg-white text-black font-medium text-sm',
-              'hover:bg-white/90 transition-all duration-200',
-            )}
-          >
-            <Plus size={14} />
-            Be the First to Review {result.courseCode}
-            <ExternalLink size={12} />
-          </a>
+          {result.rmpUrl && (
+            <a
+              href={result.rmpUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'flex items-center gap-2 px-5 py-2.5 rounded-lg',
+                'bg-white text-black font-medium text-sm',
+                'hover:bg-white/90 transition-all duration-200',
+              )}
+            >
+              <Plus size={14} />
+              Rate this Class
+              <ExternalLink size={12} />
+            </a>
+          )}
         </div>
       )}
 
@@ -489,7 +665,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
       <div className="flex items-start gap-2 pt-3 border-t border-border/20">
         <AlertTriangle size={11} className="text-muted-foreground/30 shrink-0 mt-0.5" />
         <p className="text-[10px] text-muted-foreground/30 leading-relaxed">
-          Data synthesized from Rate My Professor, Reddit, and publicly available sources. Results are AI-generated and may not reflect the most recent reviews.
+          Data sourced from Rate My Professors. Reviews and ratings are from real students. Always verify with current students and official sources.
         </p>
       </div>
     </div>
