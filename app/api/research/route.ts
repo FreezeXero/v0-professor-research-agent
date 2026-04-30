@@ -98,316 +98,62 @@ const ResearchResultSchema = z.object({
 })
 
 export type ResearchResult = z.infer<typeof ResearchResultSchema>
-export type Review = z.infer<typeof ReviewSchema>
 
 // ============================================================================
-// RMP GraphQL API
+// Helper functions
 // ============================================================================
 
-const RMP_ENDPOINT = 'https://www.ratemyprofessors.com/graphql'
-const RMP_AUTH = 'dGVzdDp0ZXN0' // Base64 encoded test:test
-
-async function rmpQuery(query: string, variables: Record<string, unknown>) {
-  try {
-    const response = await fetch(RMP_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${RMP_AUTH}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Origin': 'https://www.ratemyprofessors.com',
-        'Referer': 'https://www.ratemyprofessors.com/',
-      },
-      body: JSON.stringify({ query, variables }),
-    })
-
-    if (!response.ok) {
-      console.error(`[v0] RMP API error: ${response.status} ${response.statusText}`)
-      const text = await response.text()
-      console.error(`[v0] Response body: ${text.substring(0, 500)}`)
-      throw new Error(`RMP API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    
-    // Check for GraphQL errors
-    if (data.errors && data.errors.length > 0) {
-      console.error('[v0] GraphQL errors:', JSON.stringify(data.errors))
-    }
-    
-    return data
-  } catch (error) {
-    console.error('[v0] RMP fetch error:', error)
-    throw error
+function normalizeClassName(input: string): string {
+  // Common class name mappings
+  const mappings: Record<string, string[]> = {
+    'calc': ['MATH', 'Calculus'],
+    'calc 1': ['MATH 124', 'MATH 151', 'MATH 141', 'Calculus I'],
+    'calc 2': ['MATH 125', 'MATH 152', 'MATH 142', 'Calculus II'],
+    'calc 3': ['MATH 126', 'MATH 253', 'MATH 243', 'Calculus III'],
+    'intro to psych': ['PSYCH 101', 'PSY 101', 'PSYC 100'],
+    'intro to cs': ['CS 101', 'CSE 142', 'COMP 101', 'CIS 110'],
+    'data structures': ['CS 201', 'CSE 143', 'COMP 182', 'CIS 121'],
+    'algorithms': ['CS 301', 'CSE 332', 'COMP 285'],
+    'linear algebra': ['MATH 308', 'MATH 221', 'MATH 200'],
+    'organic chem': ['CHEM 237', 'CHEM 241', 'CHEM 301'],
+    'physics 1': ['PHYS 121', 'PHYS 141', 'PHYS 101'],
+    'physics 2': ['PHYS 122', 'PHYS 142', 'PHYS 102'],
   }
-}
 
-// Search for school by name
-async function searchSchool(schoolName: string): Promise<{ id: string; legacyId: number; name: string } | null> {
-  const query = `
-    query NewSearchSchoolsQuery($query: SchoolSearchQuery!) {
-      newSearch {
-        schools(query: $query) {
-          edges {
-            node {
-              id
-              legacyId
-              name
-              city
-              state
-            }
-          }
-        }
-      }
-    }
-  `
-
-  const result = await rmpQuery(query, { query: { text: schoolName } })
-  const schools = result?.data?.newSearch?.schools?.edges || []
+  const lower = input.toLowerCase().trim()
   
-  if (schools.length === 0) return null
-
-  // Try to find exact match first
-  const normalizedSearch = schoolName.toLowerCase().trim()
-  const exactMatch = schools.find((edge: { node: { name: string } }) => 
-    edge.node.name.toLowerCase() === normalizedSearch
-  )
-  
-  return exactMatch?.node || schools[0]?.node || null
-}
-
-// Search for professor at school
-async function searchProfessor(professorName: string, schoolId: string): Promise<{ id: string; legacyId: number; firstName: string; lastName: string; department: string } | null> {
-  const query = `
-    query NewSearchTeachersQuery($query: TeacherSearchQuery!) {
-      newSearch {
-        teachers(query: $query) {
-          edges {
-            node {
-              id
-              legacyId
-              firstName
-              lastName
-              department
-              school {
-                name
-                id
-              }
-            }
-          }
-        }
-      }
-    }
-  `
-
-  const result = await rmpQuery(query, { 
-    query: { 
-      text: professorName,
-      schoolID: schoolId,
-    } 
-  })
-  
-  const teachers = result?.data?.newSearch?.teachers?.edges || []
-  if (teachers.length === 0) return null
-
-  // Parse the search query into first and last name parts
-  const normalizedSearch = professorName.toLowerCase().trim()
-  const nameParts = normalizedSearch.split(/\s+/).filter(p => p.length > 0)
-  
-  // Try to find an exact match (both first AND last name must match)
-  for (const edge of teachers) {
-    const { firstName, lastName } = edge.node as { firstName: string; lastName: string }
-    const firstLower = firstName.toLowerCase()
-    const lastLower = lastName.toLowerCase()
-    const fullName = `${firstLower} ${lastLower}`
-    
-    // Exact full name match
-    if (fullName === normalizedSearch) {
-      return edge.node
-    }
-    
-    // All name parts must be present in either first or last name
-    if (nameParts.length >= 2) {
-      // Check if we have a first name match AND last name match
-      const hasFirstMatch = nameParts.some(part => firstLower.includes(part) || part.includes(firstLower))
-      const hasLastMatch = nameParts.some(part => lastLower.includes(part) || part.includes(lastLower))
-      
-      // Both first and last name must have a match from different parts
-      if (hasFirstMatch && hasLastMatch) {
-        // Verify this is the right person by checking that the parts actually match
-        const matchesFirst = nameParts.some(part => 
-          firstLower === part || firstLower.startsWith(part) || part.startsWith(firstLower)
-        )
-        const matchesLast = nameParts.some(part => 
-          lastLower === part || lastLower.startsWith(part) || part.startsWith(lastLower)
-        )
-        if (matchesFirst && matchesLast) {
-          return edge.node
-        }
-      }
-    }
-    
-    // Single name search - must match last name exactly
-    if (nameParts.length === 1) {
-      if (lastLower === nameParts[0] || lastLower.startsWith(nameParts[0])) {
-        return edge.node
-      }
+  // Check if input matches a mapping
+  for (const [key, values] of Object.entries(mappings)) {
+    if (lower === key || lower.includes(key)) {
+      return values[0] // Return the first (most common) mapping
     }
   }
 
-  // No exact match found - return null instead of a random professor
-  return null
+  // If it already looks like a course code, normalize it
+  const codeMatch = input.match(/^([A-Za-z]+)\s*(\d+)/)
+  if (codeMatch) {
+    return `${codeMatch[1].toUpperCase()} ${codeMatch[2]}`
+  }
+
+  return input.toUpperCase()
 }
 
-// Get full professor details including ratings
-async function getProfessorDetails(professorId: string) {
-  const query = `
-    query TeacherRatingsPageQuery($id: ID!) {
-      node(id: $id) {
-        __typename
-        ... on Teacher {
-          id
-          legacyId
-          firstName
-          lastName
-          department
-          school {
-            legacyId
-            name
-            id
-          }
-          avgRating
-          avgDifficulty
-          numRatings
-          wouldTakeAgainPercent
-          courseCodes {
-            courseName
-            courseCount
-          }
-          ratingsDistribution {
-            r1
-            r2
-            r3
-            r4
-            r5
-          }
-          ratings(first: 50) {
-            edges {
-              node {
-                id
-                legacyId
-                comment
-                date
-                class
-                grade
-                helpfulRating
-                clarityRating
-                difficultyRating
-                wouldTakeAgain
-                ratingTags
-                thumbsUpTotal
-                thumbsDownTotal
-                isForOnlineClass
-                attendanceMandatory
-              }
-            }
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-          }
-        }
-      }
-    }
-  `
-
-  const result = await rmpQuery(query, { id: professorId })
-  return result?.data?.node || null
-}
-
-// ============================================================================
-// Data Processing
-// ============================================================================
-
-function normalizeClassName(className: string | null | undefined): string {
-  if (!className) return ''
-  // Remove common patterns and normalize
-  return className
-    .toUpperCase()
-    .replace(/\s+/g, '')
-    .replace(/-/g, '')
-    .replace(/[^A-Z0-9]/g, '')
-}
-
-function classNamesMatch(class1: string | null | undefined, class2: string | null | undefined): boolean {
-  const norm1 = normalizeClassName(class1)
-  const norm2 = normalizeClassName(class2)
-  
-  if (!norm1 || !norm2) return false
-  
-  // Direct match
-  if (norm1 === norm2) return true
-  
-  // One contains the other
-  if (norm1.includes(norm2) || norm2.includes(norm1)) return true
-  
-  // Extract just the numbers and letters separately
-  const letters1 = norm1.replace(/[0-9]/g, '')
-  const numbers1 = norm1.replace(/[A-Z]/g, '')
-  const letters2 = norm2.replace(/[0-9]/g, '')
-  const numbers2 = norm2.replace(/[A-Z]/g, '')
-  
-  // Match if same department prefix and same number
-  if (letters1 === letters2 && numbers1 === numbers2) return true
-  
-  return false
-}
-
-interface RawRating {
-  comment: string
-  date: string
-  class: string | null
-  grade: string | null
-  helpfulRating: number
-  clarityRating: number
-  difficultyRating: number
-  wouldTakeAgain: number | null
-  ratingTags: string[]
-  thumbsUpTotal: number
-}
-
-function processReviews(rawRatings: RawRating[]): Review[] {
-  return rawRatings.map(r => ({
-    comment: r.comment || '',
-    rating: ((r.helpfulRating || 0) + (r.clarityRating || 0)) / 2,
-    difficulty: r.difficultyRating || 0,
-    date: r.date || '',
-    class: r.class,
-    grade: r.grade,
-    wouldTakeAgain: r.wouldTakeAgain === 1 ? true : r.wouldTakeAgain === 0 ? false : null,
-    tags: r.ratingTags || [],
-    thumbsUp: r.thumbsUpTotal || 0,
-  }))
-}
-
-function computeGradeDistribution(reviews: Review[]): { A: number; B: number; C: number; D: number; F: number } | null {
-  const gradesWithData = reviews.filter(r => r.grade && r.grade !== 'N/A' && r.grade !== 'Not sure yet')
-  if (gradesWithData.length < 3) return null
+function computeGradeDistribution(ratings: { grade?: string | null }[]): { A: number; B: number; C: number; D: number; F: number } | null {
+  const gradeRatings = ratings.filter(r => r.grade && r.grade !== 'N/A' && r.grade !== 'Not sure')
+  if (gradeRatings.length === 0) return null
 
   const counts = { A: 0, B: 0, C: 0, D: 0, F: 0 }
   
-  for (const r of gradesWithData) {
-    const grade = r.grade?.toUpperCase() || ''
-    if (grade.startsWith('A')) counts.A++
-    else if (grade.startsWith('B')) counts.B++
-    else if (grade.startsWith('C')) counts.C++
-    else if (grade.startsWith('D')) counts.D++
-    else if (grade.startsWith('F') || grade === 'WF') counts.F++
+  for (const r of gradeRatings) {
+    const g = r.grade?.toUpperCase() || ''
+    if (g.startsWith('A')) counts.A++
+    else if (g.startsWith('B')) counts.B++
+    else if (g.startsWith('C')) counts.C++
+    else if (g.startsWith('D')) counts.D++
+    else if (g.startsWith('F') || g === 'INCOMPLETE' || g === 'DROP') counts.F++
   }
 
-  const total = counts.A + counts.B + counts.C + counts.D + counts.F
+  const total = Object.values(counts).reduce((a, b) => a + b, 0)
   if (total === 0) return null
 
   return {
@@ -419,305 +165,288 @@ function computeGradeDistribution(reviews: Review[]): { A: number; B: number; C:
   }
 }
 
-function computeTrend(reviews: Review[]): { direction: 'up' | 'down' | 'stable'; description: string } {
-  if (reviews.length < 5) {
-    return { direction: 'stable', description: 'Not enough reviews to determine trend' }
-  }
+function computeReviewTrend(ratings: { date?: string; quality?: number }[]): { direction: 'up' | 'down' | 'stable'; description: string } | null {
+  const datedRatings = ratings
+    .filter(r => r.date && r.quality)
+    .map(r => ({ date: new Date(r.date!), quality: r.quality! }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
 
-  // Sort by date (newest first)
-  const sorted = [...reviews].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  
-  const recentCount = Math.min(10, Math.floor(sorted.length / 3))
-  const recent = sorted.slice(0, recentCount)
-  const older = sorted.slice(recentCount)
+  if (datedRatings.length < 3) return null
 
-  if (older.length === 0) {
-    return { direction: 'stable', description: 'All reviews are recent' }
-  }
+  // Compare first third vs last third
+  const third = Math.floor(datedRatings.length / 3)
+  const early = datedRatings.slice(0, third)
+  const recent = datedRatings.slice(-third)
 
-  const recentAvg = recent.reduce((sum, r) => sum + r.rating, 0) / recent.length
-  const olderAvg = older.reduce((sum, r) => sum + r.rating, 0) / older.length
-  
-  const diff = recentAvg - olderAvg
-  
+  const earlyAvg = early.reduce((sum, r) => sum + r.quality, 0) / early.length
+  const recentAvg = recent.reduce((sum, r) => sum + r.quality, 0) / recent.length
+
+  const diff = recentAvg - earlyAvg
+
   if (diff > 0.3) {
-    return { direction: 'up', description: 'Recent reviews are more positive than older ones' }
+    return { direction: 'up', description: 'Ratings have been improving recently' }
   } else if (diff < -0.3) {
-    return { direction: 'down', description: 'Recent reviews show a decline compared to earlier feedback' }
+    return { direction: 'down', description: 'Ratings have been declining recently' }
   }
-  return { direction: 'stable', description: 'Consistent ratings across recent and older reviews' }
+  return { direction: 'stable', description: 'Ratings have been consistent over time' }
 }
 
-function extractTopTags(reviews: Review[]): string[] {
-  const tagCounts: Record<string, number> = {}
-  
-  for (const r of reviews) {
-    for (const tag of r.tags) {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1
-    }
-  }
-  
-  return Object.entries(tagCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([tag]) => tag)
-}
+function generateSummary(ratings: { comment?: string; quality?: number; wouldTakeAgain?: number | null }[], professorName: string): string {
+  if (ratings.length === 0) return 'No reviews available to summarize.'
 
-function computeProsAndCons(reviews: Review[]): { pros: string[]; cons: string[] } {
-  const positiveReviews = reviews.filter(r => r.rating >= 4)
-  const negativeReviews = reviews.filter(r => r.rating <= 2.5)
+  const avgQuality = ratings.reduce((sum, r) => sum + (r.quality || 0), 0) / ratings.length
+  const wouldTakeAgainRatings = ratings.filter(r => r.wouldTakeAgain !== null && r.wouldTakeAgain !== undefined)
+  const wouldTakeAgainPct = wouldTakeAgainRatings.length > 0
+    ? (wouldTakeAgainRatings.filter(r => r.wouldTakeAgain === 1).length / wouldTakeAgainRatings.length) * 100
+    : null
 
   // Extract common themes from comments
+  const comments = ratings.map(r => r.comment || '').join(' ').toLowerCase()
+  
+  const themes: string[] = []
+  if (comments.includes('helpful') || comments.includes('help')) themes.push('helpful')
+  if (comments.includes('clear') || comments.includes('explains well')) themes.push('clear explanations')
+  if (comments.includes('hard') || comments.includes('difficult') || comments.includes('tough')) themes.push('challenging')
+  if (comments.includes('easy') || comments.includes('simple')) themes.push('straightforward')
+  if (comments.includes('boring') || comments.includes('dull')) themes.push('lectures can be dry')
+  if (comments.includes('engaging') || comments.includes('interesting')) themes.push('engaging')
+  if (comments.includes('fair') || comments.includes('reasonable')) themes.push('fair grading')
+  if (comments.includes('harsh') || comments.includes('strict')) themes.push('strict grading')
+  if (comments.includes('caring') || comments.includes('cares')) themes.push('cares about students')
+
+  let summary = `Based on ${ratings.length} reviews, `
+  
+  if (avgQuality >= 4.0) {
+    summary += `${professorName} is highly rated by students. `
+  } else if (avgQuality >= 3.0) {
+    summary += `${professorName} receives mixed but generally positive reviews. `
+  } else {
+    summary += `${professorName} has received some critical feedback. `
+  }
+
+  if (themes.length > 0) {
+    summary += `Students commonly mention: ${themes.slice(0, 3).join(', ')}. `
+  }
+
+  if (wouldTakeAgainPct !== null) {
+    if (wouldTakeAgainPct >= 70) {
+      summary += `A strong majority (${Math.round(wouldTakeAgainPct)}%) would take this professor again.`
+    } else if (wouldTakeAgainPct >= 50) {
+      summary += `About ${Math.round(wouldTakeAgainPct)}% would take this professor again.`
+    } else {
+      summary += `Only ${Math.round(wouldTakeAgainPct)}% would take this professor again.`
+    }
+  }
+
+  return summary
+}
+
+function extractProsAndCons(ratings: { comment?: string; quality?: number }[]): { pros: string[]; cons: string[] } {
   const pros: string[] = []
   const cons: string[] = []
 
-  // Common positive keywords
-  const positiveKeywords = [
-    { pattern: /clear|clearly|easy to understand/i, text: 'Explains concepts clearly' },
-    { pattern: /helpful|approachable|accessible/i, text: 'Helpful and approachable' },
-    { pattern: /fair|reasonable/i, text: 'Fair grader' },
-    { pattern: /engaging|interesting|passionate/i, text: 'Engaging lectures' },
-    { pattern: /office hours/i, text: 'Good office hours' },
-    { pattern: /caring|cares/i, text: 'Cares about students' },
-    { pattern: /funny|humor/i, text: 'Good sense of humor' },
-    { pattern: /organized/i, text: 'Well organized' },
-  ]
+  const positiveKeywords = ['helpful', 'clear', 'engaging', 'fair', 'caring', 'organized', 'knowledgeable', 'passionate', 'accessible', 'responsive']
+  const negativeKeywords = ['boring', 'confusing', 'harsh', 'disorganized', 'unclear', 'unresponsive', 'difficult', 'unfair', 'rude']
 
-  const negativeKeywords = [
-    { pattern: /boring|dry|monotone/i, text: 'Lectures can be dry' },
-    { pattern: /confusing|unclear|hard to follow/i, text: 'Can be confusing' },
-    { pattern: /hard|difficult|tough/i, text: 'Difficult material' },
-    { pattern: /fast|rushed|too quick/i, text: 'Moves too fast' },
-    { pattern: /homework|workload/i, text: 'Heavy workload' },
-    { pattern: /harsh|strict|hard grader/i, text: 'Strict grading' },
-    { pattern: /unhelpful|unavailable/i, text: 'Not very available' },
-    { pattern: /accent|understand/i, text: 'Can be hard to understand' },
-  ]
+  const comments = ratings.map(r => r.comment?.toLowerCase() || '').join(' ')
 
-  for (const kw of positiveKeywords) {
-    if (positiveReviews.some(r => kw.pattern.test(r.comment))) {
-      pros.push(kw.text)
+  for (const word of positiveKeywords) {
+    if (comments.includes(word)) {
+      const capitalized = word.charAt(0).toUpperCase() + word.slice(1)
+      if (!pros.includes(capitalized)) pros.push(capitalized)
     }
   }
 
-  for (const kw of negativeKeywords) {
-    if (negativeReviews.some(r => kw.pattern.test(r.comment))) {
-      cons.push(kw.text)
+  for (const word of negativeKeywords) {
+    if (comments.includes(word)) {
+      const capitalized = word.charAt(0).toUpperCase() + word.slice(1)
+      if (!cons.includes(capitalized)) cons.push(capitalized)
     }
   }
 
-  return { 
-    pros: pros.slice(0, 4), 
-    cons: cons.slice(0, 4) 
-  }
-}
-
-function findStandoutQuote(reviews: Review[]): string | null {
-  // Find a highly-upvoted review with a meaningful comment
-  const goodReviews = reviews
-    .filter(r => r.comment && r.comment.length > 30 && r.comment.length < 300)
-    .sort((a, b) => (b.thumbsUp - a.thumbsUp) || (b.rating - a.rating))
-
-  return goodReviews[0]?.comment || null
-}
-
-function generateSummary(
-  professorName: string,
-  courseName: string | null,
-  avgRating: number,
-  wouldTakeAgain: number | null,
-  reviews: Review[],
-  hasClassSpecific: boolean,
-): string {
-  const ratingDesc = avgRating >= 4.0 ? 'highly rated' : avgRating >= 3.0 ? 'moderately rated' : 'has mixed reviews'
-  const takeAgainStr = wouldTakeAgain !== null ? `${Math.round(wouldTakeAgain)}% of students would take this professor again.` : ''
-  
-  // Extract common themes
-  const themes: string[] = []
-  const positiveCount = reviews.filter(r => r.rating >= 4).length
-  const negativeCount = reviews.filter(r => r.rating <= 2).length
-  
-  if (positiveCount > negativeCount * 2) {
-    themes.push('generally positive feedback')
-  } else if (negativeCount > positiveCount * 2) {
-    themes.push('mixed to negative feedback')
-  } else {
-    themes.push('divided opinions among students')
-  }
-
-  // Check for common comment themes
-  const allComments = reviews.map(r => r.comment.toLowerCase()).join(' ')
-  if (allComments.includes('lecture') && (allComments.includes('clear') || allComments.includes('good'))) {
-    themes.push('known for clear lectures')
-  }
-  if (allComments.includes('hard') || allComments.includes('difficult')) {
-    themes.push('considered challenging')
-  }
-  if (allComments.includes('helpful') || allComments.includes('office hours')) {
-    themes.push('accessible outside of class')
-  }
-
-  const themeSummary = themes.length > 0 ? ` Students report ${themes.slice(0, 2).join(' and ')}.` : ''
-
-  return `Professor ${professorName} is ${ratingDesc}${courseName && hasClassSpecific ? ` for ${courseName}` : ''}.${themeSummary} ${takeAgainStr}`.trim()
+  return { pros: pros.slice(0, 4), cons: cons.slice(0, 4) }
 }
 
 // ============================================================================
-// Main Handler
+// Main handler
 // ============================================================================
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { university, professor, classQuery } = await req.json()
+    const body = await request.json()
+    const { university, professor, className } = body
 
     if (!university || !professor) {
-      return Response.json({ error: 'University and professor name are required.' }, { status: 400 })
-    }
-
-    // Step 1: Search for school
-    const school = await searchSchool(university)
-    if (!school) {
-      return Response.json({
-        professorFound: false,
-        notFoundReason: `Could not find "${university}" in Rate My Professors database. Try the full official name of the school.`,
-        hasClassSpecificData: false,
-        availableCourses: null,
-      } as Partial<ResearchResult>)
-    }
-
-    // Step 2: Search for professor at school
-    const prof = await searchProfessor(professor, school.id)
-    if (!prof) {
-      return Response.json({
-        professorFound: false,
-        notFoundReason: `Professor "${professor}" not found on Rate My Professors at ${school.name}. This professor may not have any ratings yet, or the name spelling might be different. Try the exact name as it appears on RMP.`,
-        hasClassSpecificData: false,
-        availableCourses: null,
-      } as Partial<ResearchResult>)
-    }
-
-    // Step 3: Get full professor details
-    const details = await getProfessorDetails(prof.id)
-    if (!details) {
-      return Response.json({
-        professorFound: false,
-        notFoundReason: `Found professor but could not load their profile. Try again later.`,
-        hasClassSpecificData: false,
-        availableCourses: null,
-      } as Partial<ResearchResult>)
-    }
-
-    // Process ratings
-    const rawRatings = details.ratings?.edges?.map((e: { node: RawRating }) => e.node) || []
-    const allReviews = processReviews(rawRatings)
-
-    // Available courses from RMP
-    const availableCourses: { courseName: string; courseCount: number }[] = details.courseCodes || []
-
-    // Filter for class-specific reviews if a class was queried
-    let classSpecificReviews: Review[] = []
-    let matchedCourse: { courseName: string; courseCount: number } | null = null
-    let hasClassSpecificData = false
-
-    if (classQuery) {
-      // First check if the queried class exists in available courses
-      matchedCourse = availableCourses.find(c => 
-        classNamesMatch(c.courseName, classQuery)
-      ) || null
-
-      // Filter reviews for this class
-      classSpecificReviews = allReviews.filter(r => 
-        r.class && classNamesMatch(r.class, classQuery)
+      return Response.json(
+        { error: 'University and professor name are required' },
+        { status: 400 }
       )
-
-      hasClassSpecificData = classSpecificReviews.length > 0
     }
 
-    // Compute stats for class-specific reviews
-    const classSpecificRating = hasClassSpecificData 
-      ? classSpecificReviews.reduce((sum, r) => sum + r.rating, 0) / classSpecificReviews.length
-      : null
-    const classSpecificDifficulty = hasClassSpecificData
-      ? classSpecificReviews.reduce((sum, r) => sum + r.difficulty, 0) / classSpecificReviews.length
-      : null
+    // Normalize the class name if provided
+    const normalizedClass = className ? normalizeClassName(className) : null
 
-    // Compute verdict
-    const effectiveRating = hasClassSpecificData ? classSpecificRating! : details.avgRating
-    const effectiveWTA = hasClassSpecificData 
-      ? (classSpecificReviews.filter(r => r.wouldTakeAgain === true).length / classSpecificReviews.filter(r => r.wouldTakeAgain !== null).length) * 100
-      : details.wouldTakeAgainPercent
+    // Call our internal professor API
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000'
     
-    let verdict: 'take' | 'avoid' | 'mixed' = 'mixed'
-    if (effectiveRating !== null && effectiveWTA !== null && !isNaN(effectiveWTA)) {
-      const score = (effectiveRating * 0.6) + (effectiveWTA / 20 * 0.4)
-      verdict = score >= 4.0 ? 'take' : score < 3.0 ? 'avoid' : 'mixed'
-    } else if (effectiveRating !== null) {
-      verdict = effectiveRating >= 4.0 ? 'take' : effectiveRating < 3.0 ? 'avoid' : 'mixed'
+    const params = new URLSearchParams({
+      name: professor,
+      school: university,
+    })
+
+    const profResponse = await fetch(`${baseUrl}/api/professor?${params}`)
+    const profData = await profResponse.json()
+
+    if (!profData.found) {
+      return Response.json({
+        professorFound: false,
+        notFoundReason: profData.error || `Professor "${professor}" not found on Rate My Professors at ${university}`,
+        hasClassSpecificData: false,
+        availableCourses: null,
+        suggestions: profData.suggestions || null,
+      } as Partial<ResearchResult>)
     }
 
-    // Build the response
-    const reviewsForAnalysis = hasClassSpecificData ? classSpecificReviews : allReviews
-    const gradeDistribution = computeGradeDistribution(reviewsForAnalysis)
-    const reviewTrend = computeTrend(reviewsForAnalysis)
-    const tags = extractTopTags(reviewsForAnalysis)
-    const { pros, cons } = computeProsAndCons(allReviews)
-    const standoutQuote = findStandoutQuote(reviewsForAnalysis)
+    const { professor: prof, ratings, availableClasses } = profData
+
+    // Filter ratings by class if specified
+    let classSpecificRatings: typeof ratings = []
+    if (normalizedClass && ratings.length > 0) {
+      const classVariants = [
+        normalizedClass.toUpperCase(),
+        normalizedClass.replace(/\s+/g, ''),
+        normalizedClass.replace(/\s+/g, ' '),
+      ]
+      
+      classSpecificRatings = ratings.filter((r: { class?: string }) => {
+        if (!r.class) return false
+        const rClass = r.class.toUpperCase().trim()
+        return classVariants.some(v => rClass.includes(v) || v.includes(rClass))
+      })
+    }
+
+    // Compute class-specific stats
+    const hasClassSpecificData = classSpecificRatings.length > 0
+    let classSpecificRating = null
+    let classSpecificDifficulty = null
+
+    if (hasClassSpecificData) {
+      const qualityRatings = classSpecificRatings.filter((r: { quality?: number }) => r.quality)
+      const difficultyRatings = classSpecificRatings.filter((r: { difficulty?: number }) => r.difficulty)
+      
+      if (qualityRatings.length > 0) {
+        classSpecificRating = qualityRatings.reduce((sum: number, r: { quality: number }) => sum + r.quality, 0) / qualityRatings.length
+      }
+      if (difficultyRatings.length > 0) {
+        classSpecificDifficulty = difficultyRatings.reduce((sum: number, r: { difficulty: number }) => sum + r.difficulty, 0) / difficultyRatings.length
+      }
+    }
+
+    // Compute grade distribution from all ratings (or class-specific if available)
+    const ratingsForGrades = hasClassSpecificData ? classSpecificRatings : ratings
+    const gradeDistribution = computeGradeDistribution(ratingsForGrades)
+
+    // Compute review trend
+    const reviewTrend = computeReviewTrend(ratings)
+
+    // Determine verdict
+    let verdict: 'take' | 'avoid' | 'mixed' | null = null
+    const ratingToUse = hasClassSpecificData ? classSpecificRating : prof.avgRating
+    if (ratingToUse !== null) {
+      if (ratingToUse >= 3.8) verdict = 'take'
+      else if (ratingToUse < 2.5) verdict = 'avoid'
+      else verdict = 'mixed'
+    }
+
+    // Generate AI summary
+    const summaryRatings = hasClassSpecificData ? classSpecificRatings : ratings.slice(0, 20)
+    const aiSummary = generateSummary(summaryRatings, `${prof.firstName} ${prof.lastName}`)
+
+    // Extract pros and cons
+    const { pros, cons } = extractProsAndCons(ratings)
+
+    // Find standout quote
+    const sortedByUpvotes = [...ratings].sort((a: { thumbsUp: number }, b: { thumbsUp: number }) => b.thumbsUp - a.thumbsUp)
+    const standoutQuote = sortedByUpvotes[0]?.comment?.substring(0, 200) || null
+
+    // Format reviews for response
+    const formatReview = (r: {
+      comment?: string
+      quality?: number
+      difficulty?: number
+      date?: string
+      class?: string
+      grade?: string
+      wouldTakeAgain?: number | null
+      tags?: string[]
+      thumbsUp?: number
+    }) => ({
+      comment: r.comment || '',
+      rating: r.quality || 0,
+      difficulty: r.difficulty || 0,
+      date: r.date || '',
+      class: r.class || null,
+      grade: r.grade || null,
+      wouldTakeAgain: r.wouldTakeAgain === 1 ? true : r.wouldTakeAgain === 0 ? false : null,
+      tags: Array.isArray(r.tags) ? r.tags : [],
+      thumbsUp: r.thumbsUp || 0,
+    })
 
     const result: ResearchResult = {
-      courseCode: matchedCourse?.courseName || classQuery || null,
-      courseFullName: matchedCourse?.courseName || classQuery || null,
+      courseCode: normalizedClass,
+      courseFullName: normalizedClass,
       professorFound: true,
       notFoundReason: null,
 
-      professorFirstName: details.firstName,
-      professorLastName: details.lastName,
-      department: details.department,
-      rmpUrl: `https://www.ratemyprofessors.com/professor/${details.legacyId}`,
+      professorFirstName: prof.firstName,
+      professorLastName: prof.lastName,
+      department: prof.department,
+      rmpUrl: `https://www.ratemyprofessors.com/professor/${prof.legacyId}`,
 
-      overallRating: details.avgRating,
-      overallRatingCount: details.numRatings,
-      difficulty: details.avgDifficulty,
-      wouldTakeAgain: details.wouldTakeAgainPercent !== -1 ? Math.round(details.wouldTakeAgainPercent) : null,
+      overallRating: prof.avgRating,
+      overallRatingCount: prof.numRatings,
+      difficulty: prof.avgDifficulty,
+      wouldTakeAgain: prof.wouldTakeAgainPercent > 0 ? prof.wouldTakeAgainPercent : null,
 
-      classSpecificRating: classSpecificRating !== null ? Math.round(classSpecificRating * 10) / 10 : null,
-      classSpecificRatingCount: classSpecificReviews.length,
-      classSpecificDifficulty: classSpecificDifficulty !== null ? Math.round(classSpecificDifficulty * 10) / 10 : null,
+      classSpecificRating: classSpecificRating ? Math.round(classSpecificRating * 10) / 10 : null,
+      classSpecificRatingCount: classSpecificRatings.length,
+      classSpecificDifficulty: classSpecificDifficulty ? Math.round(classSpecificDifficulty * 10) / 10 : null,
       hasClassSpecificData,
 
-      availableCourses: availableCourses.length > 0 ? availableCourses : null,
+      availableCourses: availableClasses?.map((c: { name: string; count: number }) => ({
+        courseName: c.name,
+        courseCount: c.count,
+      })) || null,
 
       gradeDistribution,
       reviewTrend,
       verdict,
 
-      reviews: allReviews.slice(0, 10), // Top 10 overall reviews
-      classSpecificReviews: hasClassSpecificData ? classSpecificReviews.slice(0, 10) : null,
+      reviews: ratings.slice(0, 15).map(formatReview),
+      classSpecificReviews: hasClassSpecificData 
+        ? classSpecificRatings.slice(0, 10).map(formatReview)
+        : null,
 
-      aiSummary: generateSummary(
-        `${details.firstName} ${details.lastName}`,
-        matchedCourse?.courseName || null,
-        hasClassSpecificData ? classSpecificRating! : details.avgRating,
-        details.wouldTakeAgainPercent !== -1 ? details.wouldTakeAgainPercent : null,
-        reviewsForAnalysis,
-        hasClassSpecificData,
-      ),
+      aiSummary,
       classSpecificInsights: hasClassSpecificData
-        ? `Based on ${classSpecificReviews.length} reviews specifically for ${matchedCourse?.courseName || classQuery}, this class is rated ${classSpecificRating!.toFixed(1)}/5 compared to the professor's overall ${details.avgRating.toFixed(1)}/5.`
-        : classQuery 
-          ? `No reviews found for "${classQuery}". This professor has reviews for: ${availableCourses.slice(0, 5).map(c => c.courseName).join(', ')}${availableCourses.length > 5 ? `, and ${availableCourses.length - 5} more` : ''}.`
+        ? `Found ${classSpecificRatings.length} reviews specifically for ${normalizedClass}.`
+        : normalizedClass
+          ? `No reviews found specifically for ${normalizedClass}. Showing overall professor ratings instead.`
           : null,
       standoutQuote,
 
-      tags,
+      tags: prof.tags || [],
       pros,
       cons,
 
       sources: [
-        { 
-          name: 'Rate My Professors', 
-          type: 'rmp', 
-          reviewCount: hasClassSpecificData ? classSpecificReviews.length : details.numRatings,
-          url: `https://www.ratemyprofessors.com/professor/${details.legacyId}`,
+        {
+          name: 'Rate My Professors',
+          type: 'rmp',
+          reviewCount: prof.numRatings,
+          url: `https://www.ratemyprofessors.com/professor/${prof.legacyId}`,
         },
       ],
     }
@@ -725,10 +454,14 @@ export async function POST(req: Request) {
     return Response.json(result)
 
   } catch (error) {
-    console.error('[ProfLens API] Error:', error)
+    console.error('[v0] Research API error:', error)
     return Response.json(
-      { error: 'Research failed. Please try again.' },
-      { status: 500 },
+      { 
+        professorFound: false, 
+        notFoundReason: 'An error occurred while fetching professor data. Please try again.',
+        hasClassSpecificData: false,
+      },
+      { status: 500 }
     )
   }
 }
