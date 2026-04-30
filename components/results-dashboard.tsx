@@ -130,7 +130,7 @@ function ReviewCard({ review }: { review: Review }) {
           </span>
         )}
         
-        {review.tags.slice(0, 3).map((tag, i) => (
+        {Array.isArray(review.tags) && review.tags.slice(0, 3).map((tag, i) => (
           <span key={i} className="text-[10px] text-muted-foreground/50 bg-surface-1 px-1.5 py-0.5 rounded">
             {tag}
           </span>
