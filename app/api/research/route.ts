@@ -463,7 +463,7 @@ export async function POST(request: Request) {
       // Reddit mentions - mock data for demo (would be fetched from Reddit API in production)
       redditMentions: profData.isMockData ? [
         {
-          subreddit: school.includes('Washington') ? 'udub' : 'college',
+          subreddit: university.includes('Washington') ? 'udub' : 'college',
           text: `${prof.firstName} ${prof.lastName} is really solid. Explains things well and actually cares if you understand the material.`,
           url: 'https://reddit.com/r/udub/comments/example1',
           date: '2 months ago',
