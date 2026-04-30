@@ -212,6 +212,16 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
     <div className="flex flex-col gap-6">
       
       {/* VERDICT BANNER */}
+{/* Demo data notice */}
+      {result.isMockData && (
+        <div className="flex items-center justify-center gap-2 py-2 px-4 bg-surface-2/50 border border-border/30 rounded-xl">
+          <Sparkles size={14} className="text-accent/60" />
+          <span className="text-xs text-muted-foreground/70">
+            Showing demo data — RMP data unavailable for this professor
+          </span>
+        </div>
+      )}
+
       {result.verdict && (
         <div className={cn(
           'flex items-center justify-center gap-3 py-5 px-6 rounded-2xl border',

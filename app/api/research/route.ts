@@ -36,6 +36,7 @@ const ResearchResultSchema = z.object({
   courseFullName: z.string().nullable(),
   professorFound: z.boolean(),
   notFoundReason: z.string().nullable(),
+  isMockData: z.boolean().optional(),
 
   // Professor info
   professorFirstName: z.string().nullable(),
@@ -399,6 +400,7 @@ export async function POST(request: Request) {
       courseFullName: normalizedClass,
       professorFound: true,
       notFoundReason: null,
+      isMockData: profData.isMockData || false,
 
       professorFirstName: prof.firstName,
       professorLastName: prof.lastName,
