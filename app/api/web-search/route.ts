@@ -99,10 +99,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return Response.json(
-      { success: true, results, error: null },
-      WebSearchResponseSchema
-    )
+    return Response.json({ success: true, results, error: null })
   } catch (error) {
     console.error('[v0] Web search route error:', error)
     return Response.json(
