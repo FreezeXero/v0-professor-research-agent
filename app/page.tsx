@@ -54,22 +54,31 @@ export default function HomePage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative">
+      {/* Subtle gradient overlay for depth */}
+      <div 
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          background: 'radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.15 0.03 250 / 0.4), transparent)',
+        }}
+        aria-hidden="true"
+      />
+      
       {/* Nav */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-border/60 sticky top-0 z-40 bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-accent flex items-center justify-center">
-            <GraduationCap size={14} className="text-accent-foreground" />
+      <header className="relative z-40 flex items-center justify-between px-6 py-4 border-b border-border/40 sticky top-0 bg-background/60 backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center shadow-lg shadow-accent/20">
+            <GraduationCap size={16} className="text-white" />
           </div>
-          <span className="text-sm font-semibold text-foreground tracking-tight">ProfLens</span>
+          <span className="text-[15px] font-semibold text-foreground tracking-tight">ProfLens</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
           <Layers size={12} />
-          <span>AI Research Agent</span>
+          <span className="hidden sm:inline">AI Research Agent</span>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-start px-4 py-10 md:py-16">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-start px-4 sm:px-6 py-10 md:py-16">
         <div className="w-full max-w-[960px] flex flex-col gap-8">
           {/* Hero */}
           <div className={cn('flex flex-col gap-3 transition-all duration-500', result || isLoading ? 'hidden md:block' : '')}>
@@ -109,7 +118,7 @@ export default function HomePage() {
                   : 'max-w-[480px] mx-auto',
               )}
             >
-              <div className="flex flex-col gap-4 p-5 bg-surface-1 border border-border rounded-2xl">
+              <div className="flex flex-col gap-5 p-6 bg-surface-1/80 backdrop-blur-sm border border-border/50 rounded-2xl shadow-xl shadow-black/20">
                 {/* Panel header */}
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-foreground">Find a Professor</span>
@@ -167,7 +176,7 @@ export default function HomePage() {
                     </div>
                   </div>
                 ) : result && searchQuery ? (
-                  <div className="p-5 bg-surface-1 border border-border rounded-2xl">
+                  <div className="p-6 bg-surface-1/80 backdrop-blur-sm border border-border/50 rounded-2xl shadow-xl shadow-black/20">
                     <ResultsDashboard result={result} searchQuery={searchQuery} />
                   </div>
                 ) : null}
@@ -229,10 +238,10 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border/60 py-4 px-5">
+      <footer className="relative z-10 border-t border-border/30 py-5 px-6">
         <div className="max-w-[960px] mx-auto flex items-center justify-between">
-          <span className="text-xs text-muted-foreground/40">ProfLens</span>
-          <span className="text-xs text-muted-foreground/40">
+          <span className="text-[11px] text-muted-foreground/40 font-medium">ProfLens</span>
+          <span className="text-[11px] text-muted-foreground/30">
             AI-synthesized from publicly available sources
           </span>
         </div>
