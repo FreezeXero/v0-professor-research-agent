@@ -66,8 +66,10 @@ export function UniversityAutocomplete({
       }
     }
     
-    // Filter universities
+    // Filter universities - always run this
     const filtered = filterUniversities(newValue)
+    
+    // Update state
     setSuggestions(filtered)
     setIsOpen(filtered.length > 0)
     setHighlightedIndex(filtered.length > 0 ? 0 : -1)

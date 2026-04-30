@@ -96,6 +96,14 @@ const ResearchResultSchema = z.object({
       }),
     )
     .nullable(),
+
+  // Reddit mentions
+  redditMentions: z.array(z.object({
+    subreddit: z.string(),
+    text: z.string(),
+    url: z.string(),
+    date: z.string(),
+  })).nullable(),
 })
 
 export type ResearchResult = z.infer<typeof ResearchResultSchema>
@@ -451,6 +459,22 @@ export async function POST(request: Request) {
           url: `https://www.ratemyprofessors.com/professor/${prof.legacyId}`,
         },
       ],
+
+      // Reddit mentions - mock data for demo (would be fetched from Reddit API in production)
+      redditMentions: profData.isMockData ? [
+        {
+          subreddit: school.includes('Washington') ? 'udub' : 'college',
+          text: `${prof.firstName} ${prof.lastName} is really solid. Explains things well and actually cares if you understand the material.`,
+          url: 'https://reddit.com/r/udub/comments/example1',
+          date: '2 months ago',
+        },
+        {
+          subreddit: 'professors',
+          text: `Had them for ${normalizedClass || 'a class'}. Tough but fair grader. Office hours are super helpful.`,
+          url: 'https://reddit.com/r/professors/comments/example2',
+          date: '5 months ago',
+        },
+      ] : [], // No Reddit mentions for real data (would need actual Reddit API integration)
     }
 
     return Response.json(result)

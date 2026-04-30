@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { SourceBadge } from '@/components/source-badge'
 import type { ResearchResult, Review } from '@/app/api/research/route'
@@ -25,6 +25,8 @@ import {
   Star,
   ThumbsUp,
   Calendar,
+  Globe,
+  MessageCircle,
 } from 'lucide-react'
 
 interface ResultsDashboardProps {
@@ -140,9 +142,95 @@ function ReviewCard({ review }: { review: Review }) {
   )
 }
 
+// Reddit mention card
+function RedditMentionCard({ mention }: { mention: { subreddit: string; text: string; url: string; date: string } }) {
+  return (
+    <div className="p-4 bg-surface-2/30 border border-border/20 rounded-xl flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <MessageCircle size={12} className="text-orange-400" />
+        <span className="text-xs text-orange-400 font-medium">r/{mention.subreddit}</span>
+        <span className="text-[10px] text-muted-foreground/40">{mention.date}</span>
+      </div>
+      <p className="text-sm text-white/70 leading-relaxed italic">
+        &ldquo;{mention.text}&rdquo;
+      </p>
+      <a 
+        href={mention.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-muted-foreground/50 hover:text-white/70 transition-colors flex items-center gap-1 self-start"
+      >
+        View on Reddit <ExternalLink size={10} />
+      </a>
+    </div>
+  )
+}
+
 export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps) {
   const [copied, setCopied] = useState(false)
   const [showAllReviews, setShowAllReviews] = useState(false)
+  const [selectedClass, setSelectedClass] = useState<string | null>(null)
+
+  // Get all unique classes from reviews
+  const allClasses = useMemo(() => {
+    if (!result.reviews) return []
+    const classMap = new Map<string, number>()
+    for (const review of result.reviews) {
+      if (review.class && review.class.trim()) {
+        const cls = review.class.toUpperCase().trim()
+        classMap.set(cls, (classMap.get(cls) || 0) + 1)
+      }
+    }
+    return Array.from(classMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }))
+  }, [result.reviews])
+
+  // Auto-select the searched class if it exists in the data
+  useEffect(() => {
+    if (searchQuery.classQuery && allClasses.length > 0) {
+      const searchedClassUpper = searchQuery.classQuery.toUpperCase().replace(/\s+/g, '')
+      const matchingClass = allClasses.find(c => {
+        const normalizedClass = c.name.replace(/\s+/g, '')
+        return normalizedClass === searchedClassUpper || 
+               normalizedClass.includes(searchedClassUpper) ||
+               searchedClassUpper.includes(normalizedClass)
+      })
+      if (matchingClass) {
+        setSelectedClass(matchingClass.name)
+      }
+    }
+  }, [searchQuery.classQuery, allClasses])
+
+  // Filter reviews by selected class (case-insensitive exact match)
+  const filteredReviews = useMemo(() => {
+    if (!result.reviews) return []
+    if (!selectedClass) return result.reviews
+    
+    return result.reviews.filter(review => {
+      if (!review.class) return false
+      const reviewClass = review.class.toUpperCase().trim()
+      const selected = selectedClass.toUpperCase().trim()
+      return reviewClass === selected
+    })
+  }, [result.reviews, selectedClass])
+
+  // Other classes this professor teaches (excluding selected)
+  const otherClasses = useMemo(() => {
+    return allClasses.filter(c => c.name !== selectedClass)
+  }, [allClasses, selectedClass])
+
+  // Calculate class-specific stats
+  const classStats = useMemo(() => {
+    if (filteredReviews.length === 0) return null
+    const ratings = filteredReviews.map(r => r.rating).filter(r => r > 0)
+    if (ratings.length === 0) return null
+    const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length
+    return {
+      rating: avg,
+      count: ratings.length
+    }
+  }, [filteredReviews])
 
   const handleShare = useCallback(async () => {
     const url = `${window.location.origin}?u=${encodeURIComponent(searchQuery.university)}&p=${encodeURIComponent(searchQuery.professor)}&c=${encodeURIComponent(searchQuery.classQuery)}`
@@ -191,28 +279,25 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
   }
 
   const overallColor = getScoreColor(result.overallRating)
-  const classColor = getScoreColor(result.classSpecificRating)
+  const classColor = getScoreColor(classStats?.rating)
 
-  const ratingDiff =
-    result.overallRating !== null &&
-    result.classSpecificRating !== null
-      ? result.classSpecificRating - result.overallRating
-      : null
+  const ratingDiff = result.overallRating !== null && classStats
+    ? classStats.rating - result.overallRating
+    : null
 
-  // Determine which reviews to show
-  const reviewsToShow = result.hasClassSpecificData && result.classSpecificReviews 
-    ? result.classSpecificReviews 
-    : result.reviews
-  
+  const hasClassFilter = selectedClass !== null
+  const reviewsToShow = filteredReviews
   const displayedReviews = showAllReviews 
     ? reviewsToShow 
-    : reviewsToShow?.slice(0, 3)
+    : reviewsToShow.slice(0, 3)
+
+  // Mock Reddit mentions (these would come from real API in production)
+  const redditMentions = result.redditMentions || []
 
   return (
     <div className="flex flex-col gap-6">
       
-      {/* VERDICT BANNER */}
-{/* Demo data notice */}
+      {/* Demo data notice */}
       {result.isMockData && (
         <div className="flex items-center justify-center gap-2 py-2 px-4 bg-surface-2/50 border border-border/30 rounded-xl">
           <Sparkles size={14} className="text-accent/60" />
@@ -222,6 +307,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
         </div>
       )}
 
+      {/* VERDICT BANNER */}
       {result.verdict && (
         <div className={cn(
           'flex items-center justify-center gap-3 py-5 px-6 rounded-2xl border',
@@ -259,10 +345,10 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
             {result.department && (
               <span className="text-xs text-muted-foreground/60">{result.department}</span>
             )}
-            {result.courseCode && (
+            {selectedClass && (
               <span className="inline-flex items-center gap-1.5 text-xs text-white bg-white/10 border border-white/10 px-2.5 py-1 rounded-full font-mono font-medium">
                 <BookOpen size={11} />
-                {result.courseCode}
+                {selectedClass}
               </span>
             )}
           </div>
@@ -314,6 +400,40 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
         </div>
       )}
 
+      {/* Class filter chips */}
+      {allClasses.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs text-muted-foreground/50 uppercase tracking-wider">Filter by class</span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedClass(null)}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200',
+                !selectedClass 
+                  ? 'bg-white text-black' 
+                  : 'bg-surface-2 text-muted-foreground hover:text-white border border-border/30'
+              )}
+            >
+              All Classes ({result.reviews?.length || 0})
+            </button>
+            {allClasses.slice(0, 8).map(cls => (
+              <button
+                key={cls.name}
+                onClick={() => setSelectedClass(cls.name)}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-xs font-mono font-medium transition-all duration-200',
+                  selectedClass === cls.name 
+                    ? 'bg-white text-black' 
+                    : 'bg-surface-2 text-muted-foreground hover:text-white border border-border/30'
+                )}
+              >
+                {cls.name} ({cls.count})
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Big stats row: Rating, Would Take Again, Difficulty */}
       <div className="grid grid-cols-3 gap-4">
         {/* Class-specific or Overall Rating */}
@@ -322,25 +442,25 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
           'bg-surface-1 border-border/40',
         )}>
           <span className="text-xs text-muted-foreground/60 uppercase tracking-wider mb-2">
-            {result.hasClassSpecificData ? `${result.courseCode} Rating` : 'Overall Rating'}
+            {hasClassFilter ? `${selectedClass} Rating` : 'Overall Rating'}
           </span>
           <span className={cn(
             'text-5xl font-bold tabular-nums leading-none',
             {
-              'text-score-green': (result.hasClassSpecificData ? classColor : overallColor) === 'green',
-              'text-score-yellow': (result.hasClassSpecificData ? classColor : overallColor) === 'yellow',
-              'text-score-red': (result.hasClassSpecificData ? classColor : overallColor) === 'red',
-              'text-muted-foreground': (result.hasClassSpecificData ? classColor : overallColor) === 'neutral',
+              'text-score-green': (hasClassFilter ? classColor : overallColor) === 'green',
+              'text-score-yellow': (hasClassFilter ? classColor : overallColor) === 'yellow',
+              'text-score-red': (hasClassFilter ? classColor : overallColor) === 'red',
+              'text-muted-foreground': (hasClassFilter ? classColor : overallColor) === 'neutral',
             }
           )}>
-            {result.hasClassSpecificData 
-              ? (result.classSpecificRating?.toFixed(1) ?? '—')
+            {hasClassFilter 
+              ? (classStats?.rating?.toFixed(1) ?? '—')
               : (result.overallRating?.toFixed(1) ?? '—')
             }
           </span>
           <span className="text-xs text-muted-foreground/50 mt-1">
-            from {result.hasClassSpecificData 
-              ? result.classSpecificRatingCount?.toLocaleString() 
+            from {hasClassFilter 
+              ? classStats?.count?.toLocaleString() 
               : result.overallRatingCount?.toLocaleString()
             } reviews
           </span>
@@ -387,7 +507,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
       </div>
 
       {/* Rating comparison: Overall vs Class-specific */}
-      {result.hasClassSpecificData && (
+      {hasClassFilter && classStats && (
         <div className="grid grid-cols-2 gap-4">
           {/* Overall rating */}
           <div className="flex flex-col gap-2 p-4 bg-surface-1 border border-border/30 rounded-xl">
@@ -464,34 +584,9 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
           )}
           <span>
             {ratingDiff > 0
-              ? `Students rate this professor ${Math.abs(ratingDiff).toFixed(1)} points higher in ${result.courseCode ?? searchQuery.classQuery}.`
-              : `Students rate this professor ${Math.abs(ratingDiff).toFixed(1)} points lower in ${result.courseCode ?? searchQuery.classQuery}.`}
+              ? `Students rate this professor ${Math.abs(ratingDiff).toFixed(1)} points higher in ${selectedClass}.`
+              : `Students rate this professor ${Math.abs(ratingDiff).toFixed(1)} points lower in ${selectedClass}.`}
           </span>
-        </div>
-      )}
-
-      {/* Available courses from this professor */}
-      {result.availableCourses && result.availableCourses.length > 0 && !result.hasClassSpecificData && searchQuery.classQuery && (
-        <div className="p-4 bg-surface-1 border border-border/30 rounded-xl">
-          <div className="flex items-center gap-2 mb-3">
-            <BookOpen size={14} className="text-muted-foreground/60" />
-            <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
-              Classes with reviews for this professor
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {result.availableCourses.slice(0, 10).map((course, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 border border-border/20 rounded-full text-xs font-mono text-white/80">
-                {course.courseName}
-                <span className="text-muted-foreground/50">({course.courseCount})</span>
-              </span>
-            ))}
-            {result.availableCourses.length > 10 && (
-              <span className="text-xs text-muted-foreground/50 self-center">
-                +{result.availableCourses.length - 10} more
-              </span>
-            )}
-          </div>
         </div>
       )}
 
@@ -529,7 +624,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
               <div className="flex items-center gap-2 mb-2">
                 <BookOpen size={13} className="text-muted-foreground/60" />
                 <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
-                  About {result.courseCode ?? searchQuery.classQuery}
+                  About {selectedClass ?? searchQuery.classQuery}
                 </span>
               </div>
               <p className="text-sm text-white/60 leading-relaxed">
@@ -551,11 +646,11 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
       )}
 
       {/* Real Reviews Section */}
-      {reviewsToShow && reviewsToShow.length > 0 && (
+      {reviewsToShow.length > 0 ? (
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
-              {result.hasClassSpecificData ? `Reviews for ${result.courseCode}` : 'Student Reviews'}
+              {hasClassFilter ? `Reviews for ${selectedClass}` : 'Student Reviews'}
             </span>
             <span className="text-xs text-muted-foreground/40">
               {reviewsToShow.length} review{reviewsToShow.length !== 1 ? 's' : ''}
@@ -563,7 +658,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
           </div>
           
           <div className="flex flex-col gap-3">
-            {displayedReviews?.map((review, i) => (
+            {displayedReviews.map((review, i) => (
               <ReviewCard key={i} review={review} />
             ))}
           </div>
@@ -577,7 +672,73 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
             </button>
           )}
         </div>
+      ) : hasClassFilter ? (
+        <div className="flex flex-col items-center gap-4 p-6 rounded-xl border border-score-yellow/20 bg-score-yellow-bg/50 text-center">
+          <AlertTriangle size={24} className="text-score-yellow" />
+          <div>
+            <p className="text-sm font-medium text-score-yellow mb-1">
+              No reviews found for {selectedClass}
+            </p>
+            <p className="text-xs text-score-yellow/70 max-w-sm">
+              This professor doesn&apos;t have any reviews specifically for this class yet.
+            </p>
+          </div>
+          <button
+            onClick={() => setSelectedClass(null)}
+            className="text-xs text-white/70 hover:text-white transition-colors underline"
+          >
+            View all reviews instead
+          </button>
+        </div>
+      ) : null}
+
+      {/* This professor also teaches section */}
+      {hasClassFilter && otherClasses.length > 0 && (
+        <div className="p-4 bg-surface-1 border border-border/30 rounded-xl">
+          <div className="flex items-center gap-2 mb-3">
+            <BookOpen size={14} className="text-muted-foreground/60" />
+            <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
+              This professor also teaches
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {otherClasses.slice(0, 8).map(cls => (
+              <button
+                key={cls.name}
+                onClick={() => setSelectedClass(cls.name)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 border border-border/20 rounded-full text-xs font-mono text-white/80 hover:bg-surface-3 hover:text-white transition-all duration-200"
+              >
+                {cls.name}
+                <span className="text-muted-foreground/50">({cls.count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
+
+      {/* Around the Web - Reddit mentions */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <Globe size={14} className="text-muted-foreground/60" />
+          <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
+            Around the Web
+          </span>
+        </div>
+        
+        {redditMentions.length > 0 ? (
+          <div className="flex flex-col gap-3">
+            {redditMentions.map((mention, i) => (
+              <RedditMentionCard key={i} mention={mention} />
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 bg-surface-2/30 border border-border/20 rounded-xl text-center">
+            <p className="text-sm text-muted-foreground/50">
+              No mentions found on Reddit for this professor.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Pros & Cons */}
       {(result.pros?.length || result.cons?.length) ? (
@@ -637,37 +798,6 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
               </span>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* No class-specific data warning + First to Rate CTA */}
-      {!result.hasClassSpecificData && searchQuery.classQuery && (
-        <div className="flex flex-col items-center gap-4 p-6 rounded-xl border border-score-yellow/20 bg-score-yellow-bg/50 text-center">
-          <AlertTriangle size={24} className="text-score-yellow" />
-          <div>
-            <p className="text-sm font-medium text-score-yellow mb-1">
-              No reviews found for &ldquo;{searchQuery.classQuery}&rdquo;
-            </p>
-            <p className="text-xs text-score-yellow/70 max-w-sm">
-              The data shown is from the professor&apos;s overall ratings. Be the first to review this specific class!
-            </p>
-          </div>
-          {result.rmpUrl && (
-            <a
-              href={result.rmpUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                'flex items-center gap-2 px-5 py-2.5 rounded-lg',
-                'bg-white text-black font-medium text-sm',
-                'hover:bg-white/90 transition-all duration-200',
-              )}
-            >
-              <Plus size={14} />
-              Rate this Class
-              <ExternalLink size={12} />
-            </a>
-          )}
         </div>
       )}
 

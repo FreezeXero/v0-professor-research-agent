@@ -427,10 +427,17 @@ export function expandAbbreviation(query: string): string | null {
 
 // Filter universities based on search query
 export function filterUniversities(query: string): University[] {
-  if (!query) return []
+  // Return empty if no query
+  if (!query || typeof query !== 'string') return []
   
   const lower = query.toLowerCase().trim()
   if (lower.length < 1) return []
+  
+  // Check that universities array is loaded
+  if (!universities || universities.length === 0) {
+    console.warn('[v0] Universities array is empty!')
+    return []
+  }
   
   // Check for abbreviation first
   const expanded = expandAbbreviation(lower)
