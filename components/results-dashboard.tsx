@@ -166,46 +166,6 @@ function RedditMentionCard({ mention }: { mention: { subreddit: string; text: st
   )
 }
 
-// Web search result card
-function WebSearchResultCard({ result }: { result: { title: string; snippet: string; url: string; source: 'reddit' | 'web' } }) {
-  const isReddit = result.source === 'reddit'
-  const domain = new URL(result.url).hostname.replace('www.', '')
-  
-  return (
-    <div className="p-4 bg-surface-2/30 border border-border/20 rounded-xl flex flex-col gap-2 hover:bg-surface-2/50 transition-colors">
-      <div className="flex items-center gap-2 justify-between">
-        <div className="flex items-center gap-2">
-          {isReddit ? (
-            <>
-              <MessageCircle size={12} className="text-orange-400" />
-              <span className="text-xs text-orange-400 font-medium">Reddit</span>
-            </>
-          ) : (
-            <>
-              <Globe size={12} className="text-blue-400" />
-              <span className="text-xs text-blue-400 font-medium">{domain}</span>
-            </>
-          )}
-        </div>
-      </div>
-      <h4 className="text-sm font-medium text-white/90 leading-snug line-clamp-2">
-        {result.title}
-      </h4>
-      <p className="text-xs text-white/60 leading-relaxed line-clamp-3">
-        {result.snippet}
-      </p>
-      <a 
-        href={result.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-xs text-muted-foreground/50 hover:text-white/70 transition-colors flex items-center gap-1 self-start"
-      >
-        Read more <ExternalLink size={10} />
-      </a>
-    </div>
-  )
-}
-
 export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps) {
   const [copied, setCopied] = useState(false)
   const [showAllReviews, setShowAllReviews] = useState(false)
@@ -756,7 +716,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
         </div>
       )}
 
-      {/* Around the Web - Web search results */}
+      {/* Around the Web - Reddit mentions */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <Globe size={14} className="text-muted-foreground/60" />
@@ -765,16 +725,16 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
           </span>
         </div>
         
-        {result.webSearchResults && result.webSearchResults.length > 0 ? (
+        {redditMentions.length > 0 ? (
           <div className="flex flex-col gap-3">
-            {result.webSearchResults.map((item, i) => (
-              <WebSearchResultCard key={i} result={item} />
+            {redditMentions.map((mention, i) => (
+              <RedditMentionCard key={i} mention={mention} />
             ))}
           </div>
         ) : (
           <div className="p-4 bg-surface-2/30 border border-border/20 rounded-xl text-center">
             <p className="text-sm text-muted-foreground/50">
-              No mentions found on Reddit or the web for this professor yet.
+              No mentions found on Reddit for this professor.
             </p>
           </div>
         )}

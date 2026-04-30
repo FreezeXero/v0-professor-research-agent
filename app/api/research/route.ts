@@ -104,14 +104,6 @@ const ResearchResultSchema = z.object({
     url: z.string(),
     date: z.string(),
   })).nullable(),
-
-  // Web search results (from Tavily)
-  webSearchResults: z.array(z.object({
-    title: z.string(),
-    snippet: z.string(),
-    url: z.string(),
-    source: z.enum(['reddit', 'web']),
-  })).nullable(),
 })
 
 export type ResearchResult = z.infer<typeof ResearchResultSchema>
@@ -282,60 +274,6 @@ function extractProsAndCons(ratings: { comment?: string; quality?: number }[]): 
   }
 
   return { pros: pros.slice(0, 4), cons: cons.slice(0, 4) }
-}
-
-// ============================================================================
-// Tavily web search helper (completely isolated - never crashes main response)
-// ============================================================================
-
-async function fetchWebSearchResults(
-  professorName: string,
-  school: string,
-): Promise<Array<{ title: string; snippet: string; url: string; source: 'reddit' | 'web' }>> {
-  try {
-    const apiKey = process.env.TAVILY_API_KEY
-    if (!apiKey) return []
-
-    const queries = [
-      `"${professorName}" "${school}" professor site:reddit.com`,
-      `"${professorName}" ${school} professor reviews`,
-    ]
-
-    const allResults: Array<{ title: string; snippet: string; url: string; source: 'reddit' | 'web' }> = []
-    const seen = new Set<string>()
-
-    for (const query of queries) {
-      try {
-        const res = await fetch('https://api.tavily.com/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_key: apiKey, query, max_results: 5 }),
-        })
-        if (!res.ok) continue
-        const data = await res.json()
-        if (!Array.isArray(data.results)) continue
-        for (const r of data.results) {
-          if (!r.url || seen.has(r.url)) continue
-          seen.add(r.url)
-          allResults.push({
-            title: r.title || '',
-            snippet: r.content || r.snippet || '',
-            url: r.url,
-            source: r.url.includes('reddit.com') ? 'reddit' : 'web',
-          })
-          if (allResults.length >= 5) break
-        }
-      } catch {
-        // Silently skip failed individual queries
-      }
-      if (allResults.length >= 5) break
-    }
-
-    return allResults
-  } catch {
-    // Tavily errors must NEVER propagate to the main research response
-    return []
-  }
 }
 
 // ============================================================================
@@ -537,9 +475,6 @@ export async function POST(request: Request) {
           date: '5 months ago',
         },
       ] : [], // No Reddit mentions for real data (would need actual Reddit API integration)
-
-      // Web search results - fetched from Tavily API (safe, never crashes main result)
-      webSearchResults: await fetchWebSearchResults(`${prof.firstName} ${prof.lastName}`, school),
     }
 
     return Response.json(result)
