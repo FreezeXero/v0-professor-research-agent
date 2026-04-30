@@ -427,43 +427,66 @@ export function expandAbbreviation(query: string): string | null {
 
 // Filter universities based on search query
 export function filterUniversities(query: string): University[] {
-  if (!query || query.length < 2) return []
+  if (!query) return []
   
   const lower = query.toLowerCase().trim()
+  if (lower.length < 1) return []
   
   // Check for abbreviation first
   const expanded = expandAbbreviation(lower)
   if (expanded) {
-    return universities.filter(u => 
+    const matches = universities.filter(u => 
       u.name.toLowerCase().includes(expanded.toLowerCase())
-    ).slice(0, 8)
+    )
+    return matches.slice(0, 10)
   }
   
   // Split into words for multi-word matching
   const words = lower.split(/\s+/).filter(w => w.length > 0)
   
-  return universities
-    .filter(uni => {
+  // Score each university for ranking
+  const scored = universities
+    .map(uni => {
       const nameLower = uni.name.toLowerCase()
       const cityLower = uni.city.toLowerCase()
       const stateLower = uni.state.toLowerCase()
+      const campusLower = uni.campus?.toLowerCase() || ''
+      
+      let score = 0
+      let matches = true
       
       // Check if all words match somewhere
-      return words.every(word => 
-        nameLower.includes(word) || 
-        cityLower.includes(word) || 
-        stateLower.includes(word) ||
-        (uni.campus && uni.campus.toLowerCase().includes(word))
-      )
-    })
-    .sort((a, b) => {
-      // Prioritize exact matches at start of name
-      const aStartMatch = a.name.toLowerCase().startsWith(lower) ? 0 : 1
-      const bStartMatch = b.name.toLowerCase().startsWith(lower) ? 0 : 1
-      if (aStartMatch !== bStartMatch) return aStartMatch - bStartMatch
+      for (const word of words) {
+        const inName = nameLower.includes(word)
+        const inCity = cityLower.includes(word)
+        const inState = stateLower.includes(word)
+        const inCampus = campusLower.includes(word)
+        
+        if (!inName && !inCity && !inState && !inCampus) {
+          matches = false
+          break
+        }
+        
+        // Score based on where match is found
+        if (nameLower.startsWith(word)) score += 100
+        else if (nameLower.includes(word)) score += 50
+        if (inCity) score += 10
+        if (inState) score += 5
+        if (inCampus) score += 20
+      }
       
-      // Then by name length (shorter = more likely what they want)
-      return a.name.length - b.name.length
+      // Boost exact start matches heavily
+      if (nameLower.startsWith(lower)) score += 200
+      
+      // Shorter names are more likely what user wants
+      score -= uni.name.length * 0.5
+      
+      return { uni, score, matches }
     })
-    .slice(0, 10)
+    .filter(item => item.matches)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 12)
+    .map(item => item.uni)
+  
+  return scored
 }

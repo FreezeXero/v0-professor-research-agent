@@ -46,6 +46,14 @@ export function UniversityAutocomplete({
     const newValue = e.target.value
     setInputValue(newValue)
     
+    // Don't filter on empty input
+    if (!newValue.trim()) {
+      setSuggestions([])
+      setIsOpen(false)
+      setHighlightedIndex(-1)
+      return
+    }
+    
     // Check for abbreviation expansion first
     const expanded = expandAbbreviation(newValue)
     if (expanded) {
@@ -58,6 +66,7 @@ export function UniversityAutocomplete({
       }
     }
     
+    // Filter universities
     const filtered = filterUniversities(newValue)
     setSuggestions(filtered)
     setIsOpen(filtered.length > 0)
@@ -78,7 +87,7 @@ export function UniversityAutocomplete({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (!isOpen) {
-        if (e.key === 'ArrowDown' && inputValue.length >= 2) {
+        if (e.key === 'ArrowDown' && inputValue.trim().length >= 1) {
           const filtered = filterUniversities(inputValue)
           if (filtered.length > 0) {
             setSuggestions(filtered)

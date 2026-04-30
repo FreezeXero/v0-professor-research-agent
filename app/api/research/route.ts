@@ -192,17 +192,53 @@ async function searchProfessor(professorName: string, schoolId: string): Promise
   const teachers = result?.data?.newSearch?.teachers?.edges || []
   if (teachers.length === 0) return null
 
-  // Try to find best match
+  // Parse the search query into first and last name parts
   const normalizedSearch = professorName.toLowerCase().trim()
-  const nameParts = normalizedSearch.split(' ')
+  const nameParts = normalizedSearch.split(/\s+/).filter(p => p.length > 0)
   
-  const bestMatch = teachers.find((edge: { node: { firstName: string; lastName: string } }) => {
-    const fullName = `${edge.node.firstName} ${edge.node.lastName}`.toLowerCase()
-    return fullName.includes(normalizedSearch) || 
-           nameParts.every(part => fullName.includes(part))
-  })
+  // Try to find an exact match (both first AND last name must match)
+  for (const edge of teachers) {
+    const { firstName, lastName } = edge.node as { firstName: string; lastName: string }
+    const firstLower = firstName.toLowerCase()
+    const lastLower = lastName.toLowerCase()
+    const fullName = `${firstLower} ${lastLower}`
+    
+    // Exact full name match
+    if (fullName === normalizedSearch) {
+      return edge.node
+    }
+    
+    // All name parts must be present in either first or last name
+    if (nameParts.length >= 2) {
+      // Check if we have a first name match AND last name match
+      const hasFirstMatch = nameParts.some(part => firstLower.includes(part) || part.includes(firstLower))
+      const hasLastMatch = nameParts.some(part => lastLower.includes(part) || part.includes(lastLower))
+      
+      // Both first and last name must have a match from different parts
+      if (hasFirstMatch && hasLastMatch) {
+        // Verify this is the right person by checking that the parts actually match
+        const matchesFirst = nameParts.some(part => 
+          firstLower === part || firstLower.startsWith(part) || part.startsWith(firstLower)
+        )
+        const matchesLast = nameParts.some(part => 
+          lastLower === part || lastLower.startsWith(part) || part.startsWith(lastLower)
+        )
+        if (matchesFirst && matchesLast) {
+          return edge.node
+        }
+      }
+    }
+    
+    // Single name search - must match last name exactly
+    if (nameParts.length === 1) {
+      if (lastLower === nameParts[0] || lastLower.startsWith(nameParts[0])) {
+        return edge.node
+      }
+    }
+  }
 
-  return bestMatch?.node || teachers[0]?.node || null
+  // No exact match found - return null instead of a random professor
+  return null
 }
 
 // Get full professor details including ratings
@@ -534,7 +570,7 @@ export async function POST(req: Request) {
     if (!prof) {
       return Response.json({
         professorFound: false,
-        notFoundReason: `Could not find professor "${professor}" at ${school.name}. Check the spelling or try searching by last name only.`,
+        notFoundReason: `Professor "${professor}" not found on Rate My Professors at ${school.name}. This professor may not have any ratings yet, or the name spelling might be different. Try the exact name as it appears on RMP.`,
         hasClassSpecificData: false,
         availableCourses: null,
       } as Partial<ResearchResult>)
