@@ -170,6 +170,19 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
   const [copied, setCopied] = useState(false)
   const [showAllReviews, setShowAllReviews] = useState(false)
   const [selectedClass, setSelectedClass] = useState<string | null>(null)
+  const [webResults, setWebResults] = useState<{title: string; content: string; url: string}[]>([])
+
+useEffect(() => {
+  if (!result.professorFound) return
+  const params = new URLSearchParams({
+    professor: `${result.professorFirstName} ${result.professorLastName}`,
+    school: searchQuery.university,
+  })
+  fetch(`/api/web-search?${params}`)
+    .then(r => r.json())
+    .then(data => setWebResults(data.results || []))
+    .catch(() => {})
+}, [result.professorFound, result.professorFirstName, result.professorLastName, searchQuery.university])
 
   // Get all unique classes from reviews
   const allClasses = useMemo(() => {
@@ -725,21 +738,30 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
           </span>
         </div>
         
-        {redditMentions.length > 0 ? (
-          <div className="flex flex-col gap-3">
-            {redditMentions.map((mention, i) => (
-              <RedditMentionCard key={i} mention={mention} />
-            ))}
-          </div>
-        ) : (
-          <div className="p-4 bg-surface-2/30 border border-border/20 rounded-xl text-center">
-            <p className="text-sm text-muted-foreground/50">
-              No mentions found on Reddit for this professor.
-            </p>
-          </div>
-        )}
+        {webResults.length > 0 ? (
+  <div className="flex flex-col gap-3">
+    {webResults.map((r, i) => (
+      <div key={i} className="p-4 bg-surface-2/30 border border-border/20 rounded-xl flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Globe size={12} className={r.url.includes('reddit') ? 'text-orange-400' : 'text-blue-400'} />
+          <span className={`text-xs font-medium ${r.url.includes('reddit') ? 'text-orange-400' : 'text-blue-400'}`}>
+            {r.url.includes('reddit') ? 'Reddit' : 'Web'}
+          </span>
+        </div>
+        <p className="text-sm text-white/70 leading-relaxed">{r.content?.slice(0, 200)}...</p>
+        <a href={r.url} target="_blank" rel="noopener noreferrer"
+          className="text-xs text-muted-foreground/50 hover:text-white/70 transition-colors flex items-center gap-1 self-start">
+          {r.title?.slice(0, 60)} <ExternalLink size={10} />
+        </a>
       </div>
-
+    ))}
+  </div>
+) : (
+  <div className="p-4 bg-surface-2/30 border border-border/20 rounded-xl text-center">
+    <p className="text-sm text-muted-foreground/50">No mentions found on Reddit for this professor.</p>
+  </div>
+)}
+      </div>
       {/* Pros & Cons */}
       {(result.pros?.length || result.cons?.length) ? (
         <div className="grid grid-cols-2 gap-4">
