@@ -108,20 +108,40 @@ const RMP_ENDPOINT = 'https://www.ratemyprofessors.com/graphql'
 const RMP_AUTH = 'dGVzdDp0ZXN0' // Base64 encoded test:test
 
 async function rmpQuery(query: string, variables: Record<string, unknown>) {
-  const response = await fetch(RMP_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Basic ${RMP_AUTH}`,
-    },
-    body: JSON.stringify({ query, variables }),
-  })
+  try {
+    const response = await fetch(RMP_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${RMP_AUTH}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Origin': 'https://www.ratemyprofessors.com',
+        'Referer': 'https://www.ratemyprofessors.com/',
+      },
+      body: JSON.stringify({ query, variables }),
+    })
 
-  if (!response.ok) {
-    throw new Error(`RMP API error: ${response.status}`)
+    if (!response.ok) {
+      console.error(`[v0] RMP API error: ${response.status} ${response.statusText}`)
+      const text = await response.text()
+      console.error(`[v0] Response body: ${text.substring(0, 500)}`)
+      throw new Error(`RMP API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    
+    // Check for GraphQL errors
+    if (data.errors && data.errors.length > 0) {
+      console.error('[v0] GraphQL errors:', JSON.stringify(data.errors))
+    }
+    
+    return data
+  } catch (error) {
+    console.error('[v0] RMP fetch error:', error)
+    throw error
   }
-
-  return response.json()
 }
 
 // Search for school by name

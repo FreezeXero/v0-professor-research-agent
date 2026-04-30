@@ -612,7 +612,7 @@ export function ResultsDashboard({ result, searchQuery }: ResultsDashboardProps)
       ) : null}
 
       {/* Tags */}
-      {result.tags && result.tags.length > 0 && (
+      {Array.isArray(result.tags) && result.tags.length > 0 && (
         <div className="flex flex-col gap-3">
           <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
             Student Tags
