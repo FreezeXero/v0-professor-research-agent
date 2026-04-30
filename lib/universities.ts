@@ -1,16 +1,168 @@
-// Comprehensive US university database with campus support and logo URLs
-// Logo URLs use Clearbit's Logo API which works for most university domains
+// Comprehensive US university database with campus support and official favicon URLs
 
 export interface University {
   name: string
   domain: string
   state: string
   city: string
-  campus?: string // For multi-campus universities
+  campus?: string
 }
 
-// Comprehensive list of US universities including all major institutions
-// and multi-campus systems (UC, CSU, SUNY, etc.)
+// Get official favicon from university domain
+export function getUniversityLogoUrl(domain: string): string {
+  // Use Google's favicon service which reliably returns official favicons
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+}
+
+// Common abbreviations mapping
+const abbreviations: Record<string, string> = {
+  'mit': 'Massachusetts Institute of Technology',
+  'ucla': 'University of California, Los Angeles',
+  'ucb': 'University of California, Berkeley',
+  'uc berkeley': 'University of California, Berkeley',
+  'usc': 'University of Southern California',
+  'nyu': 'New York University',
+  'bu': 'Boston University',
+  'bc': 'Boston College',
+  'cmu': 'Carnegie Mellon University',
+  'caltech': 'California Institute of Technology',
+  'gt': 'Georgia Institute of Technology',
+  'gatech': 'Georgia Institute of Technology',
+  'uw': 'University of Washington',
+  'ut': 'University of Texas at Austin',
+  'ut austin': 'University of Texas at Austin',
+  'utd': 'University of Texas at Dallas',
+  'osu': 'Ohio State University',
+  'psu': 'Penn State University',
+  'msu': 'Michigan State University',
+  'umn': 'University of Minnesota',
+  'umd': 'University of Maryland',
+  'umich': 'University of Michigan',
+  'wisc': 'University of Wisconsin',
+  'uiuc': 'University of Illinois Urbana-Champaign',
+  'ucsd': 'University of California, San Diego',
+  'uci': 'University of California, Irvine',
+  'ucsb': 'University of California, Santa Barbara',
+  'ucsc': 'University of California, Santa Cruz',
+  'ucr': 'University of California, Riverside',
+  'ucd': 'University of California, Davis',
+  'sfsu': 'San Francisco State University',
+  'sdsu': 'San Diego State University',
+  'sjsu': 'San Jose State University',
+  'csuf': 'California State University, Fullerton',
+  'csulb': 'California State University, Long Beach',
+  'csun': 'California State University, Northridge',
+  'asu': 'Arizona State University',
+  'ua': 'University of Arizona',
+  'cu': 'University of Colorado',
+  'cu boulder': 'University of Colorado Boulder',
+  'uf': 'University of Florida',
+  'fsu': 'Florida State University',
+  'ucf': 'University of Central Florida',
+  'fiu': 'Florida International University',
+  'uga': 'University of Georgia',
+  'tamu': 'Texas A&M University',
+  'vt': 'Virginia Tech',
+  'uva': 'University of Virginia',
+  'unc': 'University of North Carolina at Chapel Hill',
+  'duke': 'Duke University',
+  'wustl': 'Washington University in St. Louis',
+  'washu': 'Washington University in St. Louis',
+  'jhu': 'Johns Hopkins University',
+  'upenn': 'University of Pennsylvania',
+  'penn': 'University of Pennsylvania',
+  'cornell': 'Cornell University',
+  'brown': 'Brown University',
+  'yale': 'Yale University',
+  'harvard': 'Harvard University',
+  'princeton': 'Princeton University',
+  'columbia': 'Columbia University',
+  'dartmouth': 'Dartmouth College',
+  'stanford': 'Stanford University',
+  'rice': 'Rice University',
+  'nd': 'University of Notre Dame',
+  'notre dame': 'University of Notre Dame',
+  'vanderbilt': 'Vanderbilt University',
+  'vandy': 'Vanderbilt University',
+  'emory': 'Emory University',
+  'tulane': 'Tulane University',
+  'wfu': 'Wake Forest University',
+  'wake': 'Wake Forest University',
+  'gw': 'George Washington University',
+  'gwu': 'George Washington University',
+  'georgetown': 'Georgetown University',
+  'american': 'American University',
+  'au': 'American University',
+  'howard': 'Howard University',
+  'umass': 'University of Massachusetts Amherst',
+  'uconn': 'University of Connecticut',
+  'rutgers': 'Rutgers University',
+  'temple': 'Temple University',
+  'drexel': 'Drexel University',
+  'villanova': 'Villanova University',
+  'lehigh': 'Lehigh University',
+  'syracuse': 'Syracuse University',
+  'rochester': 'University of Rochester',
+  'rpi': 'Rensselaer Polytechnic Institute',
+  'case': 'Case Western Reserve University',
+  'cwru': 'Case Western Reserve University',
+  'purdue': 'Purdue University',
+  'iu': 'Indiana University',
+  'indiana': 'Indiana University',
+  'iowa': 'University of Iowa',
+  'iowa state': 'Iowa State University',
+  'nebraska': 'University of Nebraska',
+  'kansas': 'University of Kansas',
+  'ku': 'University of Kansas',
+  'mizzou': 'University of Missouri',
+  'ole miss': 'University of Mississippi',
+  'lsu': 'Louisiana State University',
+  'bama': 'University of Alabama',
+  'auburn': 'Auburn University',
+  'tennessee': 'University of Tennessee',
+  'kentucky': 'University of Kentucky',
+  'sc': 'University of South Carolina',
+  'clemson': 'Clemson University',
+  'wvu': 'West Virginia University',
+  'pitt': 'University of Pittsburgh',
+  'penn state': 'Penn State University',
+  'buffalo': 'University at Buffalo',
+  'stony brook': 'Stony Brook University',
+  'binghamton': 'Binghamton University',
+  'albany': 'University at Albany',
+  'hofstra': 'Hofstra University',
+  'fordham': 'Fordham University',
+  'depaul': 'DePaul University',
+  'loyola': 'Loyola University Chicago',
+  'marquette': 'Marquette University',
+  'creighton': 'Creighton University',
+  'slu': 'Saint Louis University',
+  'du': 'University of Denver',
+  'gonzaga': 'Gonzaga University',
+  'seattle u': 'Seattle University',
+  'scu': 'Santa Clara University',
+  'lmu': 'Loyola Marymount University',
+  'pepperdine': 'Pepperdine University',
+  'usd': 'University of San Diego',
+  'usf': 'University of San Francisco',
+  'smu': 'Southern Methodist University',
+  'tcu': 'Texas Christian University',
+  'baylor': 'Baylor University',
+  'byu': 'Brigham Young University',
+  'utah': 'University of Utah',
+  'cu denver': 'University of Colorado Denver',
+  'unm': 'University of New Mexico',
+  'unlv': 'University of Nevada, Las Vegas',
+  'unr': 'University of Nevada, Reno',
+  'hawaii': 'University of Hawaii',
+  'oregon': 'University of Oregon',
+  'uo': 'University of Oregon',
+  'wsu': 'Washington State University',
+  'portland': 'University of Portland',
+  'gonzaga': 'Gonzaga University',
+}
+
+// Comprehensive university list with official domains
 export const universities: University[] = [
   // Ivy League
   { name: 'Harvard University', domain: 'harvard.edu', state: 'MA', city: 'Cambridge' },
@@ -79,11 +231,9 @@ export const universities: University[] = [
   { name: 'Stevens Institute of Technology', domain: 'stevens.edu', state: 'NJ', city: 'Hoboken' },
   { name: 'Worcester Polytechnic Institute', domain: 'wpi.edu', state: 'MA', city: 'Worcester' },
   { name: 'Rochester Institute of Technology', domain: 'rit.edu', state: 'NY', city: 'Rochester' },
+  { name: 'Georgia Institute of Technology', domain: 'gatech.edu', state: 'GA', city: 'Atlanta' },
   { name: 'George Mason University', domain: 'gmu.edu', state: 'VA', city: 'Fairfax' },
   { name: 'Hofstra University', domain: 'hofstra.edu', state: 'NY', city: 'Hempstead' },
-  { name: 'Yeshiva University', domain: 'yu.edu', state: 'NY', city: 'New York' },
-  { name: 'Clark University', domain: 'clarku.edu', state: 'MA', city: 'Worcester' },
-  { name: 'American University', domain: 'american.edu', state: 'DC', city: 'Washington' },
   { name: 'The New School', domain: 'newschool.edu', state: 'NY', city: 'New York' },
   { name: 'Clarkson University', domain: 'clarkson.edu', state: 'NY', city: 'Potsdam' },
   { name: 'Adelphi University', domain: 'adelphi.edu', state: 'NY', city: 'Garden City' },
@@ -96,7 +246,7 @@ export const universities: University[] = [
   { name: 'Xavier University', domain: 'xavier.edu', state: 'OH', city: 'Cincinnati' },
   { name: 'University of Dayton', domain: 'udayton.edu', state: 'OH', city: 'Dayton' },
 
-  // University of California System (10 campuses)
+  // University of California System
   { name: 'University of California, Berkeley', domain: 'berkeley.edu', state: 'CA', city: 'Berkeley', campus: 'Berkeley' },
   { name: 'University of California, Los Angeles', domain: 'ucla.edu', state: 'CA', city: 'Los Angeles', campus: 'Los Angeles' },
   { name: 'University of California, San Diego', domain: 'ucsd.edu', state: 'CA', city: 'La Jolla', campus: 'San Diego' },
@@ -108,7 +258,7 @@ export const universities: University[] = [
   { name: 'University of California, Merced', domain: 'ucmerced.edu', state: 'CA', city: 'Merced', campus: 'Merced' },
   { name: 'University of California, San Francisco', domain: 'ucsf.edu', state: 'CA', city: 'San Francisco', campus: 'San Francisco' },
 
-  // California State University System (23 campuses)
+  // California State University System
   { name: 'California State University, Fullerton', domain: 'fullerton.edu', state: 'CA', city: 'Fullerton', campus: 'Fullerton' },
   { name: 'California State University, Long Beach', domain: 'csulb.edu', state: 'CA', city: 'Long Beach', campus: 'Long Beach' },
   { name: 'California State University, Northridge', domain: 'csun.edu', state: 'CA', city: 'Northridge', campus: 'Northridge' },
@@ -116,24 +266,19 @@ export const universities: University[] = [
   { name: 'San Jose State University', domain: 'sjsu.edu', state: 'CA', city: 'San Jose' },
   { name: 'San Francisco State University', domain: 'sfsu.edu', state: 'CA', city: 'San Francisco' },
   { name: 'California State Polytechnic University, Pomona', domain: 'cpp.edu', state: 'CA', city: 'Pomona', campus: 'Pomona' },
-  { name: 'California Polytechnic State University, San Luis Obispo', domain: 'calpoly.edu', state: 'CA', city: 'San Luis Obispo', campus: 'San Luis Obispo' },
+  { name: 'California Polytechnic State University, San Luis Obispo', domain: 'calpoly.edu', state: 'CA', city: 'San Luis Obispo' },
   { name: 'California State University, Sacramento', domain: 'csus.edu', state: 'CA', city: 'Sacramento', campus: 'Sacramento' },
   { name: 'California State University, Fresno', domain: 'csufresno.edu', state: 'CA', city: 'Fresno', campus: 'Fresno' },
   { name: 'California State University, Los Angeles', domain: 'calstatela.edu', state: 'CA', city: 'Los Angeles', campus: 'Los Angeles' },
-  { name: 'California State University, Dominguez Hills', domain: 'csudh.edu', state: 'CA', city: 'Carson', campus: 'Dominguez Hills' },
   { name: 'California State University, East Bay', domain: 'csueastbay.edu', state: 'CA', city: 'Hayward', campus: 'East Bay' },
   { name: 'California State University, San Bernardino', domain: 'csusb.edu', state: 'CA', city: 'San Bernardino', campus: 'San Bernardino' },
   { name: 'California State University, Chico', domain: 'csuchico.edu', state: 'CA', city: 'Chico', campus: 'Chico' },
   { name: 'Humboldt State University', domain: 'humboldt.edu', state: 'CA', city: 'Arcata' },
   { name: 'Sonoma State University', domain: 'sonoma.edu', state: 'CA', city: 'Rohnert Park' },
-  { name: 'California State University, Stanislaus', domain: 'csustan.edu', state: 'CA', city: 'Turlock', campus: 'Stanislaus' },
-  { name: 'California State University, Bakersfield', domain: 'csub.edu', state: 'CA', city: 'Bakersfield', campus: 'Bakersfield' },
   { name: 'California State University, Monterey Bay', domain: 'csumb.edu', state: 'CA', city: 'Seaside', campus: 'Monterey Bay' },
-  { name: 'California State University, Channel Islands', domain: 'csuci.edu', state: 'CA', city: 'Camarillo', campus: 'Channel Islands' },
   { name: 'California State University, San Marcos', domain: 'csusm.edu', state: 'CA', city: 'San Marcos', campus: 'San Marcos' },
-  { name: 'California Maritime Academy', domain: 'csum.edu', state: 'CA', city: 'Vallejo' },
 
-  // SUNY System (State University of New York)
+  // SUNY System
   { name: 'Stony Brook University', domain: 'stonybrook.edu', state: 'NY', city: 'Stony Brook' },
   { name: 'University at Buffalo', domain: 'buffalo.edu', state: 'NY', city: 'Buffalo' },
   { name: 'University at Albany', domain: 'albany.edu', state: 'NY', city: 'Albany' },
@@ -153,6 +298,9 @@ export const universities: University[] = [
   { name: 'University of Washington - Seattle', domain: 'washington.edu', state: 'WA', city: 'Seattle', campus: 'Seattle' },
   { name: 'University of Washington - Bothell', domain: 'uwb.edu', state: 'WA', city: 'Bothell', campus: 'Bothell' },
   { name: 'University of Washington - Tacoma', domain: 'tacoma.uw.edu', state: 'WA', city: 'Tacoma', campus: 'Tacoma' },
+  { name: 'Washington State University', domain: 'wsu.edu', state: 'WA', city: 'Pullman' },
+  { name: 'Washington State University - Vancouver', domain: 'vancouver.wsu.edu', state: 'WA', city: 'Vancouver', campus: 'Vancouver' },
+  { name: 'Washington State University - Tri-Cities', domain: 'tricities.wsu.edu', state: 'WA', city: 'Richland', campus: 'Tri-Cities' },
 
   // University of Texas System
   { name: 'University of Texas at Austin', domain: 'utexas.edu', state: 'TX', city: 'Austin', campus: 'Austin' },
@@ -164,7 +312,6 @@ export const universities: University[] = [
   { name: 'Texas A&M University', domain: 'tamu.edu', state: 'TX', city: 'College Station' },
   { name: 'Texas A&M University - Commerce', domain: 'tamuc.edu', state: 'TX', city: 'Commerce', campus: 'Commerce' },
   { name: 'Texas A&M University - Corpus Christi', domain: 'tamucc.edu', state: 'TX', city: 'Corpus Christi', campus: 'Corpus Christi' },
-  { name: 'Texas A&M University - Kingsville', domain: 'tamuk.edu', state: 'TX', city: 'Kingsville', campus: 'Kingsville' },
   { name: 'Texas Tech University', domain: 'ttu.edu', state: 'TX', city: 'Lubbock' },
   { name: 'Texas State University', domain: 'txstate.edu', state: 'TX', city: 'San Marcos' },
   { name: 'University of Houston', domain: 'uh.edu', state: 'TX', city: 'Houston' },
@@ -172,7 +319,7 @@ export const universities: University[] = [
   { name: 'University of Houston - Downtown', domain: 'uhd.edu', state: 'TX', city: 'Houston', campus: 'Downtown' },
   { name: 'University of North Texas', domain: 'unt.edu', state: 'TX', city: 'Denton' },
 
-  // Big Ten Universities
+  // Big Ten / Major State Universities
   { name: 'University of Michigan', domain: 'umich.edu', state: 'MI', city: 'Ann Arbor' },
   { name: 'University of Michigan - Dearborn', domain: 'umd.umich.edu', state: 'MI', city: 'Dearborn', campus: 'Dearborn' },
   { name: 'University of Michigan - Flint', domain: 'umflint.edu', state: 'MI', city: 'Flint', campus: 'Flint' },
@@ -180,25 +327,20 @@ export const universities: University[] = [
   { name: 'Ohio State University', domain: 'osu.edu', state: 'OH', city: 'Columbus' },
   { name: 'Penn State University', domain: 'psu.edu', state: 'PA', city: 'University Park' },
   { name: 'Penn State University - Harrisburg', domain: 'harrisburg.psu.edu', state: 'PA', city: 'Harrisburg', campus: 'Harrisburg' },
-  { name: 'Penn State University - Erie', domain: 'behrend.psu.edu', state: 'PA', city: 'Erie', campus: 'Behrend' },
+  { name: 'Penn State University - Erie', domain: 'behrend.psu.edu', state: 'PA', city: 'Erie', campus: 'Erie' },
   { name: 'University of Wisconsin - Madison', domain: 'wisc.edu', state: 'WI', city: 'Madison', campus: 'Madison' },
   { name: 'University of Wisconsin - Milwaukee', domain: 'uwm.edu', state: 'WI', city: 'Milwaukee', campus: 'Milwaukee' },
   { name: 'University of Wisconsin - La Crosse', domain: 'uwlax.edu', state: 'WI', city: 'La Crosse', campus: 'La Crosse' },
-  { name: 'University of Wisconsin - Eau Claire', domain: 'uwec.edu', state: 'WI', city: 'Eau Claire', campus: 'Eau Claire' },
-  { name: 'University of Wisconsin - Green Bay', domain: 'uwgb.edu', state: 'WI', city: 'Green Bay', campus: 'Green Bay' },
-  { name: 'University of Wisconsin - Oshkosh', domain: 'uwosh.edu', state: 'WI', city: 'Oshkosh', campus: 'Oshkosh' },
-  { name: 'University of Wisconsin - Whitewater', domain: 'uww.edu', state: 'WI', city: 'Whitewater', campus: 'Whitewater' },
   { name: 'University of Minnesota - Twin Cities', domain: 'umn.edu', state: 'MN', city: 'Minneapolis', campus: 'Twin Cities' },
   { name: 'University of Minnesota - Duluth', domain: 'd.umn.edu', state: 'MN', city: 'Duluth', campus: 'Duluth' },
   { name: 'University of Iowa', domain: 'uiowa.edu', state: 'IA', city: 'Iowa City' },
+  { name: 'Iowa State University', domain: 'iastate.edu', state: 'IA', city: 'Ames' },
   { name: 'University of Illinois Urbana-Champaign', domain: 'illinois.edu', state: 'IL', city: 'Champaign', campus: 'Urbana-Champaign' },
   { name: 'University of Illinois Chicago', domain: 'uic.edu', state: 'IL', city: 'Chicago', campus: 'Chicago' },
-  { name: 'University of Illinois Springfield', domain: 'uis.edu', state: 'IL', city: 'Springfield', campus: 'Springfield' },
   { name: 'Indiana University Bloomington', domain: 'iu.edu', state: 'IN', city: 'Bloomington', campus: 'Bloomington' },
   { name: 'Indiana University - Purdue University Indianapolis', domain: 'iupui.edu', state: 'IN', city: 'Indianapolis', campus: 'Indianapolis' },
   { name: 'Purdue University', domain: 'purdue.edu', state: 'IN', city: 'West Lafayette' },
   { name: 'Purdue University - Fort Wayne', domain: 'pfw.edu', state: 'IN', city: 'Fort Wayne', campus: 'Fort Wayne' },
-  { name: 'Purdue University - Northwest', domain: 'pnw.edu', state: 'IN', city: 'Hammond', campus: 'Northwest' },
   { name: 'University of Nebraska - Lincoln', domain: 'unl.edu', state: 'NE', city: 'Lincoln', campus: 'Lincoln' },
   { name: 'University of Nebraska - Omaha', domain: 'unomaha.edu', state: 'NE', city: 'Omaha', campus: 'Omaha' },
   { name: 'University of Maryland, College Park', domain: 'umd.edu', state: 'MD', city: 'College Park', campus: 'College Park' },
@@ -214,37 +356,48 @@ export const universities: University[] = [
   { name: 'Arizona State University - Polytechnic', domain: 'asu.edu', state: 'AZ', city: 'Mesa', campus: 'Polytechnic' },
   { name: 'University of Arizona', domain: 'arizona.edu', state: 'AZ', city: 'Tucson' },
   { name: 'Northern Arizona University', domain: 'nau.edu', state: 'AZ', city: 'Flagstaff' },
+  { name: 'University of Colorado Boulder', domain: 'colorado.edu', state: 'CO', city: 'Boulder', campus: 'Boulder' },
+  { name: 'University of Colorado Denver', domain: 'ucdenver.edu', state: 'CO', city: 'Denver', campus: 'Denver' },
+  { name: 'University of Colorado Colorado Springs', domain: 'uccs.edu', state: 'CO', city: 'Colorado Springs', campus: 'Colorado Springs' },
+  { name: 'Colorado State University', domain: 'colostate.edu', state: 'CO', city: 'Fort Collins' },
   { name: 'University of Florida', domain: 'ufl.edu', state: 'FL', city: 'Gainesville' },
   { name: 'Florida State University', domain: 'fsu.edu', state: 'FL', city: 'Tallahassee' },
   { name: 'University of Central Florida', domain: 'ucf.edu', state: 'FL', city: 'Orlando' },
   { name: 'University of South Florida', domain: 'usf.edu', state: 'FL', city: 'Tampa' },
   { name: 'Florida International University', domain: 'fiu.edu', state: 'FL', city: 'Miami' },
   { name: 'Florida Atlantic University', domain: 'fau.edu', state: 'FL', city: 'Boca Raton' },
-  { name: 'Florida A&M University', domain: 'famu.edu', state: 'FL', city: 'Tallahassee' },
   { name: 'University of Georgia', domain: 'uga.edu', state: 'GA', city: 'Athens' },
-  { name: 'Georgia Institute of Technology', domain: 'gatech.edu', state: 'GA', city: 'Atlanta' },
   { name: 'Georgia State University', domain: 'gsu.edu', state: 'GA', city: 'Atlanta' },
-  { name: 'University of North Carolina at Chapel Hill', domain: 'unc.edu', state: 'NC', city: 'Chapel Hill' },
-  { name: 'North Carolina State University', domain: 'ncsu.edu', state: 'NC', city: 'Raleigh' },
-  { name: 'University of North Carolina at Charlotte', domain: 'uncc.edu', state: 'NC', city: 'Charlotte' },
-  { name: 'University of North Carolina at Greensboro', domain: 'uncg.edu', state: 'NC', city: 'Greensboro' },
-  { name: 'East Carolina University', domain: 'ecu.edu', state: 'NC', city: 'Greenville' },
-  { name: 'Appalachian State University', domain: 'appstate.edu', state: 'NC', city: 'Boone' },
   { name: 'University of Virginia', domain: 'virginia.edu', state: 'VA', city: 'Charlottesville' },
   { name: 'Virginia Tech', domain: 'vt.edu', state: 'VA', city: 'Blacksburg' },
   { name: 'Virginia Commonwealth University', domain: 'vcu.edu', state: 'VA', city: 'Richmond' },
-  { name: 'Old Dominion University', domain: 'odu.edu', state: 'VA', city: 'Norfolk' },
   { name: 'James Madison University', domain: 'jmu.edu', state: 'VA', city: 'Harrisonburg' },
-  { name: 'College of William & Mary', domain: 'wm.edu', state: 'VA', city: 'Williamsburg' },
-  { name: 'University of Colorado Boulder', domain: 'colorado.edu', state: 'CO', city: 'Boulder', campus: 'Boulder' },
-  { name: 'University of Colorado Denver', domain: 'ucdenver.edu', state: 'CO', city: 'Denver', campus: 'Denver' },
-  { name: 'University of Colorado Colorado Springs', domain: 'uccs.edu', state: 'CO', city: 'Colorado Springs', campus: 'Colorado Springs' },
-  { name: 'Colorado State University', domain: 'colostate.edu', state: 'CO', city: 'Fort Collins' },
+  { name: 'Old Dominion University', domain: 'odu.edu', state: 'VA', city: 'Norfolk' },
+  { name: 'University of North Carolina at Chapel Hill', domain: 'unc.edu', state: 'NC', city: 'Chapel Hill' },
+  { name: 'North Carolina State University', domain: 'ncsu.edu', state: 'NC', city: 'Raleigh' },
+  { name: 'University of North Carolina at Charlotte', domain: 'charlotte.edu', state: 'NC', city: 'Charlotte', campus: 'Charlotte' },
+  { name: 'East Carolina University', domain: 'ecu.edu', state: 'NC', city: 'Greenville' },
+  { name: 'Appalachian State University', domain: 'appstate.edu', state: 'NC', city: 'Boone' },
+  { name: 'University of South Carolina', domain: 'sc.edu', state: 'SC', city: 'Columbia' },
+  { name: 'Clemson University', domain: 'clemson.edu', state: 'SC', city: 'Clemson' },
+  { name: 'University of Tennessee, Knoxville', domain: 'utk.edu', state: 'TN', city: 'Knoxville' },
+  { name: 'University of Kentucky', domain: 'uky.edu', state: 'KY', city: 'Lexington' },
+  { name: 'University of Louisville', domain: 'louisville.edu', state: 'KY', city: 'Louisville' },
+  { name: 'University of Alabama', domain: 'ua.edu', state: 'AL', city: 'Tuscaloosa' },
+  { name: 'University of Alabama at Birmingham', domain: 'uab.edu', state: 'AL', city: 'Birmingham', campus: 'Birmingham' },
+  { name: 'Auburn University', domain: 'auburn.edu', state: 'AL', city: 'Auburn' },
+  { name: 'University of Mississippi', domain: 'olemiss.edu', state: 'MS', city: 'Oxford' },
+  { name: 'Mississippi State University', domain: 'msstate.edu', state: 'MS', city: 'Starkville' },
+  { name: 'Louisiana State University', domain: 'lsu.edu', state: 'LA', city: 'Baton Rouge' },
+  { name: 'University of Arkansas', domain: 'uark.edu', state: 'AR', city: 'Fayetteville' },
+  { name: 'University of Missouri', domain: 'missouri.edu', state: 'MO', city: 'Columbia' },
+  { name: 'University of Kansas', domain: 'ku.edu', state: 'KS', city: 'Lawrence' },
+  { name: 'Kansas State University', domain: 'k-state.edu', state: 'KS', city: 'Manhattan' },
+  { name: 'University of Oklahoma', domain: 'ou.edu', state: 'OK', city: 'Norman' },
+  { name: 'Oklahoma State University', domain: 'okstate.edu', state: 'OK', city: 'Stillwater' },
   { name: 'University of Oregon', domain: 'uoregon.edu', state: 'OR', city: 'Eugene' },
   { name: 'Oregon State University', domain: 'oregonstate.edu', state: 'OR', city: 'Corvallis' },
   { name: 'Portland State University', domain: 'pdx.edu', state: 'OR', city: 'Portland' },
-  { name: 'Washington State University', domain: 'wsu.edu', state: 'WA', city: 'Pullman' },
-  { name: 'Western Washington University', domain: 'wwu.edu', state: 'WA', city: 'Bellingham' },
   { name: 'University of Utah', domain: 'utah.edu', state: 'UT', city: 'Salt Lake City' },
   { name: 'Utah State University', domain: 'usu.edu', state: 'UT', city: 'Logan' },
   { name: 'University of Nevada, Las Vegas', domain: 'unlv.edu', state: 'NV', city: 'Las Vegas' },
@@ -252,334 +405,65 @@ export const universities: University[] = [
   { name: 'University of New Mexico', domain: 'unm.edu', state: 'NM', city: 'Albuquerque' },
   { name: 'New Mexico State University', domain: 'nmsu.edu', state: 'NM', city: 'Las Cruces' },
   { name: 'University of Hawaii at Manoa', domain: 'hawaii.edu', state: 'HI', city: 'Honolulu' },
-  { name: 'University of Alaska Anchorage', domain: 'uaa.alaska.edu', state: 'AK', city: 'Anchorage' },
   { name: 'University of Alaska Fairbanks', domain: 'uaf.edu', state: 'AK', city: 'Fairbanks' },
-  { name: 'University of Connecticut', domain: 'uconn.edu', state: 'CT', city: 'Storrs' },
-  { name: 'University of Massachusetts Amherst', domain: 'umass.edu', state: 'MA', city: 'Amherst', campus: 'Amherst' },
+  { name: 'West Virginia University', domain: 'wvu.edu', state: 'WV', city: 'Morgantown' },
+  { name: 'University of Pittsburgh', domain: 'pitt.edu', state: 'PA', city: 'Pittsburgh' },
+  { name: 'University of Massachusetts Amherst', domain: 'umass.edu', state: 'MA', city: 'Amherst' },
   { name: 'University of Massachusetts Boston', domain: 'umb.edu', state: 'MA', city: 'Boston', campus: 'Boston' },
   { name: 'University of Massachusetts Lowell', domain: 'uml.edu', state: 'MA', city: 'Lowell', campus: 'Lowell' },
-  { name: 'University of Massachusetts Dartmouth', domain: 'umassd.edu', state: 'MA', city: 'Dartmouth', campus: 'Dartmouth' },
+  { name: 'University of Connecticut', domain: 'uconn.edu', state: 'CT', city: 'Storrs' },
   { name: 'University of Rhode Island', domain: 'uri.edu', state: 'RI', city: 'Kingston' },
   { name: 'University of Vermont', domain: 'uvm.edu', state: 'VT', city: 'Burlington' },
   { name: 'University of New Hampshire', domain: 'unh.edu', state: 'NH', city: 'Durham' },
   { name: 'University of Maine', domain: 'umaine.edu', state: 'ME', city: 'Orono' },
   { name: 'University of Delaware', domain: 'udel.edu', state: 'DE', city: 'Newark' },
-  { name: 'University of Pittsburgh', domain: 'pitt.edu', state: 'PA', city: 'Pittsburgh' },
-  { name: 'West Virginia University', domain: 'wvu.edu', state: 'WV', city: 'Morgantown' },
-  { name: 'Marshall University', domain: 'marshall.edu', state: 'WV', city: 'Huntington' },
-  { name: 'University of Kentucky', domain: 'uky.edu', state: 'KY', city: 'Lexington' },
-  { name: 'University of Louisville', domain: 'louisville.edu', state: 'KY', city: 'Louisville' },
-  { name: 'University of Tennessee, Knoxville', domain: 'utk.edu', state: 'TN', city: 'Knoxville' },
-  { name: 'University of Memphis', domain: 'memphis.edu', state: 'TN', city: 'Memphis' },
-  { name: 'Middle Tennessee State University', domain: 'mtsu.edu', state: 'TN', city: 'Murfreesboro' },
-  { name: 'University of Alabama', domain: 'ua.edu', state: 'AL', city: 'Tuscaloosa' },
-  { name: 'Auburn University', domain: 'auburn.edu', state: 'AL', city: 'Auburn' },
-  { name: 'University of Alabama at Birmingham', domain: 'uab.edu', state: 'AL', city: 'Birmingham' },
-  { name: 'University of South Alabama', domain: 'southalabama.edu', state: 'AL', city: 'Mobile' },
-  { name: 'University of Mississippi', domain: 'olemiss.edu', state: 'MS', city: 'University' },
-  { name: 'Mississippi State University', domain: 'msstate.edu', state: 'MS', city: 'Starkville' },
-  { name: 'Louisiana State University', domain: 'lsu.edu', state: 'LA', city: 'Baton Rouge' },
-  { name: 'University of New Orleans', domain: 'uno.edu', state: 'LA', city: 'New Orleans' },
-  { name: 'Louisiana Tech University', domain: 'latech.edu', state: 'LA', city: 'Ruston' },
-  { name: 'University of Louisiana at Lafayette', domain: 'louisiana.edu', state: 'LA', city: 'Lafayette' },
-  { name: 'University of Arkansas', domain: 'uark.edu', state: 'AR', city: 'Fayetteville' },
-  { name: 'Arkansas State University', domain: 'astate.edu', state: 'AR', city: 'Jonesboro' },
-  { name: 'University of Oklahoma', domain: 'ou.edu', state: 'OK', city: 'Norman' },
-  { name: 'Oklahoma State University', domain: 'okstate.edu', state: 'OK', city: 'Stillwater' },
-  { name: 'University of Kansas', domain: 'ku.edu', state: 'KS', city: 'Lawrence' },
-  { name: 'Kansas State University', domain: 'k-state.edu', state: 'KS', city: 'Manhattan' },
-  { name: 'Wichita State University', domain: 'wichita.edu', state: 'KS', city: 'Wichita' },
-  { name: 'University of Missouri', domain: 'missouri.edu', state: 'MO', city: 'Columbia' },
-  { name: 'Missouri University of Science and Technology', domain: 'mst.edu', state: 'MO', city: 'Rolla' },
-  { name: 'University of Missouri - Kansas City', domain: 'umkc.edu', state: 'MO', city: 'Kansas City', campus: 'Kansas City' },
-  { name: 'University of Missouri - St. Louis', domain: 'umsl.edu', state: 'MO', city: 'St. Louis', campus: 'St. Louis' },
-  { name: 'Iowa State University', domain: 'iastate.edu', state: 'IA', city: 'Ames' },
-  { name: 'University of Northern Iowa', domain: 'uni.edu', state: 'IA', city: 'Cedar Falls' },
-  { name: 'University of South Dakota', domain: 'usd.edu', state: 'SD', city: 'Vermillion' },
-  { name: 'South Dakota State University', domain: 'sdstate.edu', state: 'SD', city: 'Brookings' },
-  { name: 'University of North Dakota', domain: 'und.edu', state: 'ND', city: 'Grand Forks' },
-  { name: 'North Dakota State University', domain: 'ndsu.edu', state: 'ND', city: 'Fargo' },
-  { name: 'University of Montana', domain: 'umt.edu', state: 'MT', city: 'Missoula' },
-  { name: 'Montana State University', domain: 'montana.edu', state: 'MT', city: 'Bozeman' },
-  { name: 'University of Wyoming', domain: 'uwyo.edu', state: 'WY', city: 'Laramie' },
-  { name: 'University of Idaho', domain: 'uidaho.edu', state: 'ID', city: 'Moscow' },
-  { name: 'Boise State University', domain: 'boisestate.edu', state: 'ID', city: 'Boise' },
-  { name: 'Clemson University', domain: 'clemson.edu', state: 'SC', city: 'Clemson' },
-  { name: 'University of South Carolina', domain: 'sc.edu', state: 'SC', city: 'Columbia' },
-  { name: 'College of Charleston', domain: 'cofc.edu', state: 'SC', city: 'Charleston' },
-  { name: 'University of Cincinnati', domain: 'uc.edu', state: 'OH', city: 'Cincinnati' },
-  { name: 'Ohio University', domain: 'ohio.edu', state: 'OH', city: 'Athens' },
-  { name: 'Miami University', domain: 'miamioh.edu', state: 'OH', city: 'Oxford' },
-  { name: 'Kent State University', domain: 'kent.edu', state: 'OH', city: 'Kent' },
-  { name: 'Bowling Green State University', domain: 'bgsu.edu', state: 'OH', city: 'Bowling Green' },
-  { name: 'University of Toledo', domain: 'utoledo.edu', state: 'OH', city: 'Toledo' },
-  { name: 'University of Akron', domain: 'uakron.edu', state: 'OH', city: 'Akron' },
-  { name: 'Cleveland State University', domain: 'csuohio.edu', state: 'OH', city: 'Cleveland' },
-  { name: 'Wright State University', domain: 'wright.edu', state: 'OH', city: 'Dayton' },
-  { name: 'Youngstown State University', domain: 'ysu.edu', state: 'OH', city: 'Youngstown' },
-  { name: 'Wayne State University', domain: 'wayne.edu', state: 'MI', city: 'Detroit' },
-  { name: 'Western Michigan University', domain: 'wmich.edu', state: 'MI', city: 'Kalamazoo' },
-  { name: 'Central Michigan University', domain: 'cmich.edu', state: 'MI', city: 'Mount Pleasant' },
-  { name: 'Eastern Michigan University', domain: 'emich.edu', state: 'MI', city: 'Ypsilanti' },
-  { name: 'Grand Valley State University', domain: 'gvsu.edu', state: 'MI', city: 'Allendale' },
-  { name: 'Oakland University', domain: 'oakland.edu', state: 'MI', city: 'Rochester' },
-  { name: 'Ball State University', domain: 'bsu.edu', state: 'IN', city: 'Muncie' },
-  { name: 'Indiana State University', domain: 'indstate.edu', state: 'IN', city: 'Terre Haute' },
-  { name: 'Towson University', domain: 'towson.edu', state: 'MD', city: 'Towson' },
-  { name: 'Salisbury University', domain: 'salisbury.edu', state: 'MD', city: 'Salisbury' },
-  { name: 'Morgan State University', domain: 'morgan.edu', state: 'MD', city: 'Baltimore' },
-  { name: 'New Jersey Institute of Technology', domain: 'njit.edu', state: 'NJ', city: 'Newark' },
-  { name: 'Rowan University', domain: 'rowan.edu', state: 'NJ', city: 'Glassboro' },
-  { name: 'Montclair State University', domain: 'montclair.edu', state: 'NJ', city: 'Montclair' },
-  { name: 'Seton Hall University', domain: 'shu.edu', state: 'NJ', city: 'South Orange' },
-  { name: 'Fairleigh Dickinson University', domain: 'fdu.edu', state: 'NJ', city: 'Teaneck' },
+]
 
-  // Art and Design Schools
-  { name: 'Pratt Institute', domain: 'pratt.edu', state: 'NY', city: 'Brooklyn' },
-  { name: 'Parsons School of Design', domain: 'newschool.edu/parsons', state: 'NY', city: 'New York' },
-  { name: 'Rhode Island School of Design', domain: 'risd.edu', state: 'RI', city: 'Providence' },
-  { name: 'School of the Art Institute of Chicago', domain: 'saic.edu', state: 'IL', city: 'Chicago' },
-  { name: 'California College of the Arts', domain: 'cca.edu', state: 'CA', city: 'San Francisco' },
-  { name: 'ArtCenter College of Design', domain: 'artcenter.edu', state: 'CA', city: 'Pasadena' },
-  { name: 'Savannah College of Art and Design', domain: 'scad.edu', state: 'GA', city: 'Savannah' },
-  { name: 'Maryland Institute College of Art', domain: 'mica.edu', state: 'MD', city: 'Baltimore' },
-  { name: 'School of Visual Arts', domain: 'sva.edu', state: 'NY', city: 'New York' },
-  { name: 'Otis College of Art and Design', domain: 'otis.edu', state: 'CA', city: 'Los Angeles' },
-  { name: 'Ringling College of Art and Design', domain: 'ringling.edu', state: 'FL', city: 'Sarasota' },
-  { name: 'Columbus College of Art and Design', domain: 'ccad.edu', state: 'OH', city: 'Columbus' },
-
-  // Music Schools
-  { name: 'Juilliard School', domain: 'juilliard.edu', state: 'NY', city: 'New York' },
-  { name: 'Berklee College of Music', domain: 'berklee.edu', state: 'MA', city: 'Boston' },
-  { name: 'New England Conservatory', domain: 'necmusic.edu', state: 'MA', city: 'Boston' },
-  { name: 'Manhattan School of Music', domain: 'msmnyc.edu', state: 'NY', city: 'New York' },
-  { name: 'Oberlin Conservatory of Music', domain: 'oberlin.edu', state: 'OH', city: 'Oberlin' },
-  { name: 'Curtis Institute of Music', domain: 'curtis.edu', state: 'PA', city: 'Philadelphia' },
-
-  // Liberal Arts Colleges (Top)
-  { name: 'Williams College', domain: 'williams.edu', state: 'MA', city: 'Williamstown' },
-  { name: 'Amherst College', domain: 'amherst.edu', state: 'MA', city: 'Amherst' },
-  { name: 'Swarthmore College', domain: 'swarthmore.edu', state: 'PA', city: 'Swarthmore' },
-  { name: 'Wellesley College', domain: 'wellesley.edu', state: 'MA', city: 'Wellesley' },
-  { name: 'Pomona College', domain: 'pomona.edu', state: 'CA', city: 'Claremont' },
-  { name: 'Bowdoin College', domain: 'bowdoin.edu', state: 'ME', city: 'Brunswick' },
-  { name: 'Middlebury College', domain: 'middlebury.edu', state: 'VT', city: 'Middlebury' },
-  { name: 'Carleton College', domain: 'carleton.edu', state: 'MN', city: 'Northfield' },
-  { name: 'Claremont McKenna College', domain: 'cmc.edu', state: 'CA', city: 'Claremont' },
-  { name: 'Haverford College', domain: 'haverford.edu', state: 'PA', city: 'Haverford' },
-  { name: 'Vassar College', domain: 'vassar.edu', state: 'NY', city: 'Poughkeepsie' },
-  { name: 'Harvey Mudd College', domain: 'hmc.edu', state: 'CA', city: 'Claremont' },
-  { name: 'Colby College', domain: 'colby.edu', state: 'ME', city: 'Waterville' },
-  { name: 'Grinnell College', domain: 'grinnell.edu', state: 'IA', city: 'Grinnell' },
-  { name: 'Hamilton College', domain: 'hamilton.edu', state: 'NY', city: 'Clinton' },
-  { name: 'Wesleyan University', domain: 'wesleyan.edu', state: 'CT', city: 'Middletown' },
-  { name: 'Colgate University', domain: 'colgate.edu', state: 'NY', city: 'Hamilton' },
-  { name: 'Bates College', domain: 'bates.edu', state: 'ME', city: 'Lewiston' },
-  { name: 'Oberlin College', domain: 'oberlin.edu', state: 'OH', city: 'Oberlin' },
-  { name: 'Macalester College', domain: 'macalester.edu', state: 'MN', city: 'St. Paul' },
-  { name: 'Barnard College', domain: 'barnard.edu', state: 'NY', city: 'New York' },
-  { name: 'Scripps College', domain: 'scrippscollege.edu', state: 'CA', city: 'Claremont' },
-  { name: 'Bryn Mawr College', domain: 'brynmawr.edu', state: 'PA', city: 'Bryn Mawr' },
-  { name: 'Smith College', domain: 'smith.edu', state: 'MA', city: 'Northampton' },
-  { name: 'Mount Holyoke College', domain: 'mtholyoke.edu', state: 'MA', city: 'South Hadley' },
-  { name: 'Trinity College', domain: 'trincoll.edu', state: 'CT', city: 'Hartford' },
-  { name: 'Connecticut College', domain: 'conncoll.edu', state: 'CT', city: 'New London' },
-  { name: 'Lafayette College', domain: 'lafayette.edu', state: 'PA', city: 'Easton' },
-  { name: 'Bucknell University', domain: 'bucknell.edu', state: 'PA', city: 'Lewisburg' },
-  { name: 'Union College', domain: 'union.edu', state: 'NY', city: 'Schenectady' },
-  { name: 'Skidmore College', domain: 'skidmore.edu', state: 'NY', city: 'Saratoga Springs' },
-  { name: 'Whitman College', domain: 'whitman.edu', state: 'WA', city: 'Walla Walla' },
-  { name: 'Reed College', domain: 'reed.edu', state: 'OR', city: 'Portland' },
-  { name: 'Colorado College', domain: 'coloradocollege.edu', state: 'CO', city: 'Colorado Springs' },
-  { name: 'Occidental College', domain: 'oxy.edu', state: 'CA', city: 'Los Angeles' },
-  { name: 'Kenyon College', domain: 'kenyon.edu', state: 'OH', city: 'Gambier' },
-  { name: 'Denison University', domain: 'denison.edu', state: 'OH', city: 'Granville' },
-  { name: 'Dickinson College', domain: 'dickinson.edu', state: 'PA', city: 'Carlisle' },
-  { name: 'Gettysburg College', domain: 'gettysburg.edu', state: 'PA', city: 'Gettysburg' },
-  { name: 'Franklin & Marshall College', domain: 'fandm.edu', state: 'PA', city: 'Lancaster' },
-  { name: 'College of the Holy Cross', domain: 'holycross.edu', state: 'MA', city: 'Worcester' },
-  { name: 'Furman University', domain: 'furman.edu', state: 'SC', city: 'Greenville' },
-  { name: 'Rhodes College', domain: 'rhodes.edu', state: 'TN', city: 'Memphis' },
-  { name: 'Sewanee: The University of the South', domain: 'sewanee.edu', state: 'TN', city: 'Sewanee' },
-  { name: 'Davidson College', domain: 'davidson.edu', state: 'NC', city: 'Davidson' },
-  { name: 'Centre College', domain: 'centre.edu', state: 'KY', city: 'Danville' },
-  { name: 'DePauw University', domain: 'depauw.edu', state: 'IN', city: 'Greencastle' },
-  { name: 'Wabash College', domain: 'wabash.edu', state: 'IN', city: 'Crawfordsville' },
-  { name: 'St. Olaf College', domain: 'stolaf.edu', state: 'MN', city: 'Northfield' },
-  { name: 'Lawrence University', domain: 'lawrence.edu', state: 'WI', city: 'Appleton' },
-  { name: 'Beloit College', domain: 'beloit.edu', state: 'WI', city: 'Beloit' },
-  { name: 'Knox College', domain: 'knox.edu', state: 'IL', city: 'Galesburg' },
-  { name: 'Lake Forest College', domain: 'lakeforest.edu', state: 'IL', city: 'Lake Forest' },
-].sort((a, b) => a.name.localeCompare(b.name))
-
-// Get logo URL from university domain using Clearbit's Logo API
-export function getUniversityLogoUrl(domain: string): string {
-  return `https://logo.clearbit.com/${domain}`
-}
-
-// Search universities with fuzzy matching
-export function filterUniversities(query: string): University[] {
-  if (!query || query.length < 2) return []
-  
-  const lowerQuery = query.toLowerCase()
-  const words = lowerQuery.split(/\s+/).filter(w => w.length > 0)
-  
-  // Score each university based on how well it matches
-  const scored = universities.map(uni => {
-    const lowerName = uni.name.toLowerCase()
-    const lowerState = uni.state.toLowerCase()
-    const lowerCity = uni.city.toLowerCase()
-    const lowerCampus = uni.campus?.toLowerCase() || ''
-    
-    let score = 0
-    
-    // Exact start match gets highest score
-    if (lowerName.startsWith(lowerQuery)) {
-      score += 100
-    }
-    
-    // Full query appears anywhere
-    if (lowerName.includes(lowerQuery)) {
-      score += 50
-    }
-    
-    // All words appear somewhere
-    const allWordsMatch = words.every(word => 
-      lowerName.includes(word) || 
-      lowerState.includes(word) || 
-      lowerCity.includes(word) ||
-      lowerCampus.includes(word)
-    )
-    if (allWordsMatch) {
-      score += 30
-    }
-    
-    // Individual word matches in name
-    for (const word of words) {
-      if (lowerName.includes(word)) score += 10
-      if (lowerState === word) score += 5
-      if (lowerCity.includes(word)) score += 5
-    }
-    
-    // Boost popular schools (by name recognition patterns)
-    const popularPatterns = ['mit', 'harvard', 'stanford', 'yale', 'princeton', 'ucla', 'berkeley', 'nyu', 'usc', 'cornell']
-    for (const pattern of popularPatterns) {
-      if (lowerName.includes(pattern) && lowerQuery.includes(pattern)) {
-        score += 20
-      }
-    }
-    
-    return { uni, score }
-  })
-  
-  // Filter to only matches with score > 0 and sort by score
-  return scored
-    .filter(s => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
-    .map(s => s.uni)
-}
-
-// Common abbreviation mappings
-const abbreviations: Record<string, string> = {
-  'mit': 'Massachusetts Institute of Technology',
-  'caltech': 'California Institute of Technology',
-  'ucla': 'University of California, Los Angeles',
-  'ucb': 'University of California, Berkeley',
-  'ucsd': 'University of California, San Diego',
-  'ucsb': 'University of California, Santa Barbara',
-  'uci': 'University of California, Irvine',
-  'ucsc': 'University of California, Santa Cruz',
-  'ucr': 'University of California, Riverside',
-  'ucd': 'University of California, Davis',
-  'nyu': 'New York University',
-  'usc': 'University of Southern California',
-  'bu': 'Boston University',
-  'bc': 'Boston College',
-  'uw': 'University of Washington - Seattle',
-  'ut austin': 'University of Texas at Austin',
-  'ut dallas': 'University of Texas at Dallas',
-  'umich': 'University of Michigan',
-  'osu': 'Ohio State University',
-  'psu': 'Penn State University',
-  'unc': 'University of North Carolina at Chapel Hill',
-  'gtech': 'Georgia Institute of Technology',
-  'gatech': 'Georgia Institute of Technology',
-  'cmu': 'Carnegie Mellon University',
-  'jhu': 'Johns Hopkins University',
-  'wustl': 'Washington University in St. Louis',
-  'washu': 'Washington University in St. Louis',
-  'upenn': 'University of Pennsylvania',
-  'penn': 'University of Pennsylvania',
-  'asu': 'Arizona State University',
-  'uva': 'University of Virginia',
-  'vt': 'Virginia Tech',
-  'fsu': 'Florida State University',
-  'ucf': 'University of Central Florida',
-  'usf': 'University of South Florida',
-  'fiu': 'Florida International University',
-  'tamu': 'Texas A&M University',
-  'umd': 'University of Maryland, College Park',
-  'umbc': 'University of Maryland, Baltimore County',
-  'rutgers': 'Rutgers University - New Brunswick',
-  'njit': 'New Jersey Institute of Technology',
-  'rpi': 'Rensselaer Polytechnic Institute',
-  'wpi': 'Worcester Polytechnic Institute',
-  'rit': 'Rochester Institute of Technology',
-  'sdsu': 'San Diego State University',
-  'sjsu': 'San Jose State University',
-  'sfsu': 'San Francisco State University',
-  'csulb': 'California State University, Long Beach',
-  'csula': 'California State University, Los Angeles',
-  'csuf': 'California State University, Fullerton',
-  'csun': 'California State University, Northridge',
-  'cal poly': 'California Polytechnic State University, San Luis Obispo',
-  'cpp': 'California State Polytechnic University, Pomona',
-  'suny': 'Stony Brook University',
-  'ub': 'University at Buffalo',
-  'ualbany': 'University at Albany',
-  'binghamton': 'Binghamton University',
-  'cu boulder': 'University of Colorado Boulder',
-  'cu denver': 'University of Colorado Denver',
-  'oregonstate': 'Oregon State University',
-  'wsu': 'Washington State University',
-  'wwu': 'Western Washington University',
-  'unlv': 'University of Nevada, Las Vegas',
-  'unr': 'University of Nevada, Reno',
-  'unm': 'University of New Mexico',
-  'nmsu': 'New Mexico State University',
-  'lsu': 'Louisiana State University',
-  'ole miss': 'University of Mississippi',
-  'msu': 'Michigan State University',
-  'msstate': 'Mississippi State University',
-  'uk': 'University of Kentucky',
-  'ut': 'University of Tennessee, Knoxville',
-  'uark': 'University of Arkansas',
-  'ou': 'University of Oklahoma',
-  'okstate': 'Oklahoma State University',
-  'ku': 'University of Kansas',
-  'ksu': 'Kansas State University',
-  'mizzou': 'University of Missouri',
-  'isu': 'Iowa State University',
-  'sdsu sd': 'South Dakota State University',
-  'ndsu': 'North Dakota State University',
-  'montana': 'University of Montana',
-  'montana state': 'Montana State University',
-  'bsu': 'Boise State University',
-  'clemson': 'Clemson University',
-  'uconn': 'University of Connecticut',
-  'umass': 'University of Massachusetts Amherst',
-  'uri': 'University of Rhode Island',
-  'uvm': 'University of Vermont',
-  'unh': 'University of New Hampshire',
-  'maine': 'University of Maine',
-  'udel': 'University of Delaware',
-  'pitt': 'University of Pittsburgh',
-  'wvu': 'West Virginia University',
-}
-
-// Expand abbreviation to full university name
+// Expand common abbreviations
 export function expandAbbreviation(query: string): string | null {
   const lower = query.toLowerCase().trim()
   return abbreviations[lower] || null
+}
+
+// Filter universities based on search query
+export function filterUniversities(query: string): University[] {
+  if (!query || query.length < 2) return []
+  
+  const lower = query.toLowerCase().trim()
+  
+  // Check for abbreviation first
+  const expanded = expandAbbreviation(lower)
+  if (expanded) {
+    return universities.filter(u => 
+      u.name.toLowerCase().includes(expanded.toLowerCase())
+    ).slice(0, 8)
+  }
+  
+  // Split into words for multi-word matching
+  const words = lower.split(/\s+/).filter(w => w.length > 0)
+  
+  return universities
+    .filter(uni => {
+      const nameLower = uni.name.toLowerCase()
+      const cityLower = uni.city.toLowerCase()
+      const stateLower = uni.state.toLowerCase()
+      
+      // Check if all words match somewhere
+      return words.every(word => 
+        nameLower.includes(word) || 
+        cityLower.includes(word) || 
+        stateLower.includes(word) ||
+        (uni.campus && uni.campus.toLowerCase().includes(word))
+      )
+    })
+    .sort((a, b) => {
+      // Prioritize exact matches at start of name
+      const aStartMatch = a.name.toLowerCase().startsWith(lower) ? 0 : 1
+      const bStartMatch = b.name.toLowerCase().startsWith(lower) ? 0 : 1
+      if (aStartMatch !== bStartMatch) return aStartMatch - bStartMatch
+      
+      // Then by name length (shorter = more likely what they want)
+      return a.name.length - b.name.length
+    })
+    .slice(0, 10)
 }

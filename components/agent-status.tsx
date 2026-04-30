@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const steps = [
-  { label: 'Mapping course code', duration: 800 },
-  { label: 'Searching Rate My Professor', duration: 1200 },
-  { label: 'Scanning Reddit threads', duration: 1000 },
-  { label: 'Filtering class-specific reviews', duration: 900 },
-  { label: 'Analyzing sentiment patterns', duration: 1100 },
-  { label: 'Generating summary', duration: 800 },
+  { label: 'Mapping course code', duration: 600 },
+  { label: 'Searching Rate My Professor', duration: 800 },
+  { label: 'Scanning Reddit threads', duration: 700 },
+  { label: 'Filtering class-specific reviews', duration: 600 },
+  { label: 'Analyzing sentiment', duration: 500 },
 ]
 
 export function AgentStatus({ isLoading }: { isLoading: boolean }) {
@@ -46,7 +45,7 @@ export function AgentStatus({ isLoading }: { isLoading: boolean }) {
   if (!isLoading) return null
 
   return (
-    <div className="flex flex-col gap-2 py-2">
+    <div className="flex flex-col gap-2 py-1">
       {steps.map((step, i) => {
         const isDone = completedSteps.includes(i)
         const isActive = currentStep === i && !isDone
@@ -56,19 +55,19 @@ export function AgentStatus({ isLoading }: { isLoading: boolean }) {
           <div key={i} className="flex items-center gap-3">
             <div className="w-4 flex items-center justify-center shrink-0">
               {isDone ? (
-                <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                <div className="w-1.5 h-1.5 rounded-full bg-white/60" />
               ) : isActive ? (
-                <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
               ) : (
-                <div className="w-1 h-1 rounded-full bg-border" />
+                <div className="w-1 h-1 rounded-full bg-border/50" />
               )}
             </div>
             <span
               className={cn(
                 'text-xs leading-relaxed transition-colors duration-300',
-                isDone ? 'text-muted-foreground/50 line-through' : '',
-                isActive ? 'text-foreground' : '',
-                isPending ? 'text-muted-foreground/30' : '',
+                isDone ? 'text-muted-foreground/40 line-through' : '',
+                isActive ? 'text-white' : '',
+                isPending ? 'text-muted-foreground/20' : '',
               )}
             >
               {step.label}

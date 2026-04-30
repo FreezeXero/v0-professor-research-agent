@@ -10,24 +10,24 @@ interface SourceBadgeProps {
 
 const sourceConfig = {
   rmp: {
-    bg: 'bg-[oklch(0.18_0.04_25)]',
-    border: 'border-[oklch(0.3_0.06_25)]',
-    text: 'text-[oklch(0.75_0.18_25)]',
-    dot: 'bg-[oklch(0.68_0.2_25)]',
+    bg: 'bg-white/5',
+    border: 'border-white/10',
+    text: 'text-white/80',
+    dot: 'bg-score-green',
     label: 'Rate My Professor',
     abbr: 'RMP',
   },
   reddit: {
-    bg: 'bg-[oklch(0.17_0.04_35)]',
-    border: 'border-[oklch(0.28_0.06_35)]',
-    text: 'text-[oklch(0.72_0.16_35)]',
-    dot: 'bg-[oklch(0.65_0.2_35)]',
+    bg: 'bg-white/5',
+    border: 'border-white/10',
+    text: 'text-white/80',
+    dot: 'bg-[#FF4500]',
     label: 'Reddit',
     abbr: 'Reddit',
   },
   other: {
     bg: 'bg-surface-2',
-    border: 'border-border',
+    border: 'border-border/30',
     text: 'text-muted-foreground',
     dot: 'bg-muted-foreground',
     label: 'Other',
@@ -41,20 +41,20 @@ export function SourceBadge({ type, name, reviewCount, url }: SourceBadgeProps) 
   const inner = (
     <div
       className={cn(
-        'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs font-medium',
-        'transition-colors duration-150',
+        'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium',
+        'transition-all duration-200',
         config.bg,
         config.border,
         config.text,
-        url && 'cursor-pointer hover:opacity-80',
+        url && 'cursor-pointer hover:bg-white/10',
       )}
     >
-      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', config.dot)} />
+      <span className={cn('w-2 h-2 rounded-full shrink-0', config.dot)} />
       <span>{name || config.label}</span>
-      <span className="text-muted-foreground font-normal">
-        {reviewCount.toLocaleString()} {reviewCount === 1 ? 'review' : 'reviews'}
+      <span className="text-muted-foreground/50 font-normal tabular-nums">
+        {reviewCount.toLocaleString()}
       </span>
-      {url && <ExternalLink size={11} className="opacity-60" />}
+      {url && <ExternalLink size={11} className="opacity-50" />}
     </div>
   )
 

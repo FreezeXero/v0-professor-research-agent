@@ -155,7 +155,7 @@ export function UniversityAutocomplete({
       }
     }
     
-    if (merged.length === 0) return <span className="text-foreground/80">{text}</span>
+    if (merged.length === 0) return <span className="text-foreground/70">{text}</span>
     
     const parts: React.ReactNode[] = []
     let lastEnd = 0
@@ -164,13 +164,13 @@ export function UniversityAutocomplete({
       const { start, end } = merged[i]
       if (start > lastEnd) {
         parts.push(
-          <span key={`dim-${i}`} className="text-foreground/60">
+          <span key={`dim-${i}`} className="text-foreground/50">
             {text.slice(lastEnd, start)}
           </span>
         )
       }
       parts.push(
-        <span key={`match-${i}`} className="text-foreground font-medium">
+        <span key={`match-${i}`} className="text-white font-medium">
           {text.slice(start, end)}
         </span>
       )
@@ -179,7 +179,7 @@ export function UniversityAutocomplete({
     
     if (lastEnd < text.length) {
       parts.push(
-        <span key="dim-end" className="text-foreground/60">
+        <span key="dim-end" className="text-foreground/50">
           {text.slice(lastEnd)}
         </span>
       )
@@ -192,7 +192,7 @@ export function UniversityAutocomplete({
     <div ref={containerRef} className="relative" onBlur={handleBlur}>
       <div className="relative flex items-center group">
         <Building2
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/70 pointer-events-none transition-colors group-focus-within:text-accent"
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none transition-colors duration-200 group-focus-within:text-white"
           size={16}
         />
         <input
@@ -209,13 +209,13 @@ export function UniversityAutocomplete({
           autoComplete="off"
           spellCheck={false}
           className={cn(
-            'w-full bg-surface-1 border border-border/60 rounded-xl',
-            'pl-11 pr-11 py-3.5 text-[15px] text-foreground',
-            'placeholder:text-muted-foreground/50',
-            'focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/60',
-            'hover:border-border hover:bg-surface-2/50',
-            'transition-all duration-200 ease-out',
-            'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-surface-1',
+            'w-full bg-surface-1 border border-border/50 rounded-xl',
+            'pl-11 pr-11 py-4 text-[15px] text-white',
+            'placeholder:text-muted-foreground/40',
+            'focus:outline-none focus:border-white/30 focus:glow-input',
+            'hover:border-border hover:bg-surface-2/30',
+            'transition-all duration-300 ease-out',
+            'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-surface-1',
           )}
           aria-autocomplete="list"
           aria-expanded={isOpen}
@@ -224,9 +224,9 @@ export function UniversityAutocomplete({
         />
         <ChevronDown
           className={cn(
-            'absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 pointer-events-none',
-            'transition-all duration-200 ease-out',
-            isOpen && 'rotate-180 text-accent/70',
+            'absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 pointer-events-none',
+            'transition-all duration-300 ease-out',
+            isOpen && 'rotate-180 text-white/60',
           )}
           size={16}
         />
@@ -236,7 +236,7 @@ export function UniversityAutocomplete({
       <div
         className={cn(
           'absolute z-50 w-full mt-2',
-          'transition-all duration-200 ease-out origin-top',
+          'transition-all duration-300 ease-out origin-top',
           isOpen && suggestions.length > 0
             ? 'opacity-100 scale-100 translate-y-0'
             : 'opacity-0 scale-95 -translate-y-2 pointer-events-none',
@@ -247,10 +247,9 @@ export function UniversityAutocomplete({
           id="university-listbox"
           role="listbox"
           className={cn(
-            'bg-surface-1/95 backdrop-blur-xl border border-border/50 rounded-xl',
-            'shadow-2xl shadow-black/40',
-            'overflow-hidden overflow-y-auto max-h-[340px]',
-            'divide-y divide-border/30',
+            'bg-surface-1/98 backdrop-blur-2xl border border-border/40 rounded-xl',
+            'glow',
+            'overflow-hidden overflow-y-auto max-h-[380px]',
           )}
         >
           {suggestions.map((uni, idx) => {
@@ -265,51 +264,52 @@ export function UniversityAutocomplete({
                 onMouseDown={() => handleSelect(uni)}
                 onMouseEnter={() => setHighlightedIndex(idx)}
                 className={cn(
-                  'flex items-center gap-3.5 px-4 py-3 cursor-pointer',
-                  'transition-all duration-100 ease-out',
+                  'flex items-center gap-4 px-4 py-3.5 cursor-pointer',
+                  'transition-all duration-150 ease-out',
+                  'border-b border-border/20 last:border-b-0',
                   idx === highlightedIndex 
-                    ? 'bg-accent/10' 
-                    : 'hover:bg-surface-2/60',
+                    ? 'bg-white/[0.06]' 
+                    : 'hover:bg-white/[0.03]',
                 )}
               >
-                {/* University Logo */}
+                {/* University Logo - using Google favicon service */}
                 <div className={cn(
-                  'relative w-9 h-9 rounded-lg overflow-hidden shrink-0',
-                  'bg-surface-3/80 border border-border/40',
+                  'relative w-10 h-10 rounded-lg overflow-hidden shrink-0',
+                  'bg-surface-3/60 border border-border/30',
                   'flex items-center justify-center',
                 )}>
                   {!hasLogoError ? (
                     <Image
                       src={logoUrl}
                       alt={`${uni.name} logo`}
-                      width={36}
-                      height={36}
-                      className="w-full h-full object-contain p-1.5"
+                      width={40}
+                      height={40}
+                      className="w-7 h-7 object-contain"
                       onError={() => handleLogoError(uni.domain)}
                       unoptimized
                     />
                   ) : (
-                    <Building2 size={16} className="text-muted-foreground/60" />
+                    <Building2 size={18} className="text-muted-foreground/50" />
                   )}
                 </div>
                 
                 {/* University Info */}
-                <div className="flex flex-col min-w-0 flex-1">
+                <div className="flex flex-col min-w-0 flex-1 gap-0.5">
                   <span className="truncate text-[14px] leading-snug">
                     {highlightMatch(uni.name, inputValue)}
                   </span>
-                  <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground/60 mt-0.5">
+                  <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground/50">
                     <MapPin size={10} className="shrink-0" />
                     <span className="truncate">
                       {uni.city}, {uni.state}
-                      {uni.campus && <span className="text-accent/70"> • {uni.campus} Campus</span>}
+                      {uni.campus && <span className="text-white/40 ml-1">({uni.campus})</span>}
                     </span>
                   </span>
                 </div>
                 
                 {/* Selection indicator */}
                 {idx === highlightedIndex && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
                 )}
               </li>
             )
@@ -318,8 +318,8 @@ export function UniversityAutocomplete({
         
         {/* Subtle hint */}
         <div className="flex justify-center mt-2">
-          <span className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">
-            {suggestions.length} result{suggestions.length !== 1 ? 's' : ''} • Use ↑↓ to navigate
+          <span className="text-[10px] text-muted-foreground/30 uppercase tracking-wider">
+            {suggestions.length} result{suggestions.length !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
